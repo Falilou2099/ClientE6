@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import java.net.URL?>
+
+<DialogPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.gestionpharma.controllers.ProduitDialogController">
+    <content>
+        <GridPane hgap="10" vgap="10">
+            <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
+            
+            <Label text="Nom du produit :" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+            <TextField fx:id="nomField" GridPane.columnIndex="1" GridPane.rowIndex="0" prefWidth="300" />
+            
+            <Label text="Description :" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+            <TextArea fx:id="descriptionField" GridPane.columnIndex="1" GridPane.rowIndex="1" prefHeight="60" />
+            
+            <Label text="Prix d'achat (€) :" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+            <TextField fx:id="prixAchatField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            
+            <Label text="Prix de vente (€) :" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+            <TextField fx:id="prixVenteField" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+            
+            <Label text="Catégorie :" GridPane.columnIndex="0" GridPane.rowIndex="4" />
+            <ComboBox fx:id="categorieCombo" GridPane.columnIndex="1" GridPane.rowIndex="4" editable="true" prefWidth="300" />
+            
+            <Label text="Quantité en stock :" GridPane.columnIndex="0" GridPane.rowIndex="5" />
+            <TextField fx:id="quantiteField" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+            
+            <Label text="Seuil d'alerte :" GridPane.columnIndex="0" GridPane.rowIndex="6" />
+            <TextField fx:id="seuilAlerteField" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+            
+            <Label text="Date d'expiration :" GridPane.columnIndex="0" GridPane.rowIndex="7" />
+            <DatePicker fx:id="dateExpirationPicker" GridPane.columnIndex="1" GridPane.rowIndex="7" promptText="JJ/MM/AAAA" />
+            
+            <columnConstraints>
+                <ColumnConstraints hgrow="NEVER" minWidth="120" prefWidth="140" />
+                <ColumnConstraints hgrow="ALWAYS" minWidth="200" prefWidth="300" />
+            </columnConstraints>
+        </GridPane>
+    </content>
+    
+    <buttonTypes>
+        <ButtonType fx:constant="OK" />
+        <ButtonType fx:constant="CANCEL" />
+    </buttonTypes>
+    
+    <stylesheets>
+        <URL value="@/styles/application.css" />
+    </stylesheets>
+</DialogPane>

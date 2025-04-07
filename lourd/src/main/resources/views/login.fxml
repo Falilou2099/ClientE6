@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox alignment="CENTER" spacing="20" xmlns:fx="http://javafx.com/fxml" fx:controller="com.gestionpharma.controllers.LoginController">
+    <padding>
+        <Insets top="20" right="40" bottom="20" left="40"/>
+    </padding>
+
+    <TabPane>
+        <Tab text="Connexion">
+            <VBox spacing="15" alignment="CENTER">
+                <TextField fx:id="usernameField" promptText="Nom d'utilisateur"/>
+                <PasswordField fx:id="passwordField" promptText="Mot de passe"/>
+                <Button text="Se connecter" onAction="#handleLogin" styleClass="button-primary"/>
+            </VBox>
+        </Tab>
+        <Tab text="Inscription">
+            <VBox spacing="15" alignment="CENTER">
+                <TextField fx:id="pharmacyName" promptText="Nom de la pharmacie"/>
+                <TextField fx:id="pharmacyAddress" promptText="Adresse"/>
+                <TextField fx:id="pharmacyPhone" promptText="Téléphone"/>
+                <TextField fx:id="pharmacyEmail" promptText="Email"/>
+                <TextField fx:id="newUsername" promptText="Nom d'utilisateur admin"/>
+                <PasswordField fx:id="newPassword" promptText="Mot de passe"/>
+                <PasswordField fx:id="confirmPassword" promptText="Confirmer le mot de passe"/>
+                <Button text="Créer le compte" onAction="#handleRegister" styleClass="button-primary"/>
+            </VBox>
+        </Tab>
+    </TabPane>
+</VBox>

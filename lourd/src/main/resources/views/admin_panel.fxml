@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.text.Text?>
+<?import javafx.scene.text.TextFlow?>
+<?import javafx.scene.shape.Rectangle?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.gestionpharma.controllers.AdminPanelController"
+      prefWidth="1200" prefHeight="800" stylesheets="@../css/modern-style.css">
+    
+    <!-- En-tête -->
+    <top>
+        <VBox styleClass="header">
+            <HBox alignment="CENTER_LEFT" spacing="20">
+                <Label text="BigPharma" styleClass="header-title"/>
+                <Label text="Système de Gestion Pharmaceutique - Interface Administrateur" styleClass="header-subtitle"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <HBox alignment="CENTER_RIGHT" spacing="10">
+                    <Label fx:id="dateLabel" styleClass="user-info"/>
+                    <Label text="Utilisateur :" styleClass="user-info"/>
+                    <Label fx:id="adminNameLabel" styleClass="user-info"/>
+                </HBox>
+            </HBox>
+        </VBox>
+    </top>
+    
+    <!-- Contenu principal -->
+    <center>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+            <!-- Tableau de bord -->
+            <Tab text="Tableau de bord">
+                <BorderPane>
+                    <padding>
+                        <Insets top="20" right="20" bottom="20" left="20"/>
+                    </padding>
+                    <top>
+                        <VBox spacing="20">
+                            <Label text="Tableau de bord" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+                            <Label fx:id="pharmacyNameLabel" style="-fx-font-size: 18px;"/>
+                        </VBox>
+                    </top>
+                    <center>
+                        <VBox spacing="30">
+                            <padding>
+                                <Insets top="20" right="0" bottom="0" left="0"/>
+                            </padding>
+                            
+                            <!-- Cartes d'indicateurs -->
+                            <GridPane hgap="20" vgap="20">
+                                <columnConstraints>
+                                    <ColumnConstraints percentWidth="33.33"/>
+                                    <ColumnConstraints percentWidth="33.33"/>
+                                    <ColumnConstraints percentWidth="33.33"/>
+                                </columnConstraints>
+                                
+                                <!-- Produits en stock -->
+                                <VBox styleClass="dashboard-card, card-green" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                    <Label text="Produits en Stock" styleClass="card-title"/>
+                                    <Label fx:id="totalProductsLabel" text="0" styleClass="card-value"/>
+                                </VBox>
+                                
+                                <!-- Commandes en cours -->
+                                <VBox styleClass="dashboard-card, card-orange" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                    <Label text="Commandes en Cours" styleClass="card-title"/>
+                                    <Label fx:id="pendingOrdersLabel" text="0" styleClass="card-value"/>
+                                </VBox>
+                                
+                                <!-- Fournisseurs -->
+                                <VBox styleClass="dashboard-card, card-blue" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                                    <Label text="Fournisseurs" styleClass="card-title"/>
+                                    <Label fx:id="suppliersCountLabel" text="0" styleClass="card-value"/>
+                                </VBox>
+                                
+                                <!-- Ventes totales -->
+                                <VBox styleClass="dashboard-card, card-purple" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                                    <Label text="Ventes Totales" styleClass="card-title"/>
+                                    <Label fx:id="totalSalesLabel" text="0 €" styleClass="card-value"/>
+                                </VBox>
+                                
+                                <!-- Nouveaux produits -->
+                                <VBox styleClass="dashboard-card, card-blue" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                    <Label text="Nouveaux Produits" styleClass="card-title"/>
+                                    <Label fx:id="newProductsLabel" text="0" styleClass="card-value"/>
+                                </VBox>
+                                
+                                <!-- Alertes stock -->
+                                <VBox styleClass="dashboard-card, card-red" GridPane.columnIndex="2" GridPane.rowIndex="1">
+                                    <Label text="Alertes Stock" styleClass="card-title"/>
+                                    <Label fx:id="stockAlertsLabel" text="0" styleClass="card-value"/>
+                                </VBox>
+                            </GridPane>
+                            
+                            <!-- Dernières activités -->
+                            <VBox spacing="10">
+                                <Label text="Dernières activités" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                                <TableView fx:id="recentActivitiesTable" VBox.vgrow="ALWAYS">
+                                    <columns>
+                                        <TableColumn fx:id="activityDateColumn" text="Date" prefWidth="150"/>
+                                        <TableColumn fx:id="activityTypeColumn" text="Type" prefWidth="150"/>
+                                        <TableColumn fx:id="activityDescriptionColumn" text="Description" prefWidth="500"/>
+                                        <TableColumn fx:id="activityUserColumn" text="Utilisateur" prefWidth="150"/>
+                                    </columns>
+                                </TableView>
+                            </VBox>
+                        </VBox>
+                    </center>
+                </BorderPane>
+            </Tab>
+            
+            <!-- Gestion des produits -->
+            <Tab text="Produits">
+                <BorderPane>
+                    <padding>
+                        <Insets top="20" right="20" bottom="20" left="20"/>
+                    </padding>
+                    <top>
+                        <VBox spacing="20">
+                            <HBox alignment="CENTER_LEFT" spacing="20">
+                                <Label text="Gestion des Produits" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <TextField fx:id="productSearchField" promptText="Rechercher un produit..." prefWidth="300"/>
+                            </HBox>
+                            <HBox spacing="10">
+                                <Button text="Ajouter un produit" styleClass="button-success" onAction="#handleAddProduct"/>
+                                <Button text="Modifier" styleClass="button-info" onAction="#handleEditProduct"/>
+                                <Button text="Supprimer" styleClass="button-warning" onAction="#handleDeleteProduct"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <ComboBox fx:id="productCategoryFilter" promptText="Filtrer par catégorie"/>
+                            </HBox>
+                        </VBox>
+                    </top>
+                    <center>
+                        <VBox spacing="10">
+                            <padding>
+                                <Insets top="20" right="0" bottom="0" left="0"/>
+                            </padding>
+                            <TableView fx:id="productsTable" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="productIdColumn" text="ID" prefWidth="50"/>
+                                    <TableColumn fx:id="productNameColumn" text="Nom" prefWidth="200"/>
+                                    <TableColumn fx:id="productDescColumn" text="Description" prefWidth="300"/>
+                                    <TableColumn fx:id="productPriceColumn" text="Prix Vente" prefWidth="100"/>
+                                    <TableColumn fx:id="productCostColumn" text="Prix Achat" prefWidth="100"/>
+                                    <TableColumn fx:id="productStockColumn" text="Stock" prefWidth="80"/>
+                                    <TableColumn fx:id="productCategoryColumn" text="Catégorie" prefWidth="150"/>
+                                    <TableColumn fx:id="productExpiryColumn" text="Date Péremption" prefWidth="150"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </center>
+                </BorderPane>
+            </Tab>
+            
+            <!-- Gestion des fournisseurs -->
+            <Tab text="Fournisseurs">
+                <BorderPane>
+                    <padding>
+                        <Insets top="20" right="20" bottom="20" left="20"/>
+                    </padding>
+                    <top>
+                        <VBox spacing="20">
+                            <HBox alignment="CENTER_LEFT" spacing="20">
+                                <Label text="Gestion des Fournisseurs" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <TextField fx:id="supplierSearchField" promptText="Rechercher un fournisseur..." prefWidth="300"/>
+                            </HBox>
+                            <HBox spacing="10">
+                                <Button text="Ajouter un fournisseur" styleClass="button-success" onAction="#handleAddSupplier"/>
+                                <Button text="Modifier" styleClass="button-info" onAction="#handleEditSupplier"/>
+                                <Button text="Supprimer" styleClass="button-warning" onAction="#handleDeleteSupplier"/>
+                            </HBox>
+                        </VBox>
+                    </top>
+                    <center>
+                        <VBox spacing="10">
+                            <padding>
+                                <Insets top="20" right="0" bottom="0" left="0"/>
+                            </padding>
+                            <TableView fx:id="suppliersTable" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="supplierIdColumn" text="ID" prefWidth="50"/>
+                                    <TableColumn fx:id="supplierNameColumn" text="Nom" prefWidth="200"/>
+                                    <TableColumn fx:id="supplierAddressColumn" text="Adresse" prefWidth="250"/>
+                                    <TableColumn fx:id="supplierPhoneColumn" text="Téléphone" prefWidth="150"/>
+                                    <TableColumn fx:id="supplierEmailColumn" text="Email" prefWidth="200"/>
+                                    <TableColumn fx:id="supplierSiretColumn" text="SIRET" prefWidth="150"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </center>
+                </BorderPane>
+            </Tab>
+            
+            <!-- Gestion des commandes -->
+            <Tab text="Commandes">
+                <BorderPane>
+                    <padding>
+                        <Insets top="20" right="20" bottom="20" left="20"/>
+                    </padding>
+                    <top>
+                        <VBox spacing="20">
+                            <HBox alignment="CENTER_LEFT" spacing="20">
+                                <Label text="Gestion des Commandes" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <TextField fx:id="orderSearchField" promptText="Rechercher une commande..." prefWidth="300"/>
+                            </HBox>
+                            <HBox spacing="10">
+                                <Button text="Nouvelle commande" styleClass="button-success" onAction="#handleNewOrder"/>
+                                <Button text="Modifier" styleClass="button-info" onAction="#handleEditOrder"/>
+                                <Button text="Annuler" styleClass="button-warning" onAction="#handleCancelOrder"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <ComboBox fx:id="orderStatusFilter" promptText="Filtrer par statut"/>
+                            </HBox>
+                        </VBox>
+                    </top>
+                    <center>
+                        <VBox spacing="10">
+                            <padding>
+                                <Insets top="20" right="0" bottom="0" left="0"/>
+                            </padding>
+                            <TableView fx:id="ordersTable" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="orderIdColumn" text="ID" prefWidth="50"/>
+                                    <TableColumn fx:id="orderDateColumn" text="Date" prefWidth="150"/>
+                                    <TableColumn fx:id="orderSupplierColumn" text="Fournisseur" prefWidth="200"/>
+                                    <TableColumn fx:id="orderStatusColumn" text="Statut" prefWidth="150"/>
+                                    <TableColumn fx:id="orderTotalColumn" text="Total TTC" prefWidth="150"/>
+                                    <TableColumn fx:id="orderDeliveryDateColumn" text="Livraison prévue" prefWidth="150"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </center>
+                </BorderPane>
+            </Tab>
+            
+            <!-- Gestion des commandes -->
+            <Tab text="Commandes">
+                <fx:include source="../com/gestionpharma/commandes.fxml"/>
+            </Tab>
+            
+            <!-- Gestion des stocks -->
+            <Tab text="Stocks">
+                <BorderPane>
+                    <padding>
+                        <Insets top="20" right="20" bottom="20" left="20"/>
+                    </padding>
+                    <top>
+                        <VBox spacing="20">
+                            <HBox alignment="CENTER_LEFT" spacing="20">
+                                <Label text="Gestion des Stocks" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <TextField fx:id="stockSearchField" promptText="Rechercher un produit..." prefWidth="300"/>
+                            </HBox>
+                            <HBox spacing="10">
+                                <Button text="Entrée stock" styleClass="button-success" onAction="#handleStockEntry"/>
+                                <Button text="Sortie stock" styleClass="button-warning" onAction="#handleStockExit"/>
+                                <Button text="Ajustement" styleClass="button-info" onAction="#handleStockAdjustment"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <ComboBox fx:id="stockAlertFilter" promptText="Afficher les alertes"/>
+                            </HBox>
+                        </VBox>
+                    </top>
+                    <center>
+                        <VBox spacing="10">
+                            <padding>
+                                <Insets top="20" right="0" bottom="0" left="0"/>
+                            </padding>
+                            <TableView fx:id="stockTable" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="stockProductIdColumn" text="ID" prefWidth="50"/>
+                                    <TableColumn fx:id="stockProductNameColumn" text="Produit" prefWidth="200"/>
+                                    <TableColumn fx:id="stockQuantityColumn" text="Quantité" prefWidth="100"/>
+                                    <TableColumn fx:id="stockMinimumColumn" text="Stock minimum" prefWidth="120"/>
+                                    <TableColumn fx:id="stockStatusColumn" text="Statut" prefWidth="100"/>
+                                    <TableColumn fx:id="stockExpiryColumn" text="Date Péremption" prefWidth="150"/>
+                                    <TableColumn fx:id="stockLastMovementColumn" text="Dernier mouvement" prefWidth="200"/>
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </center>
+                </BorderPane>
+            </Tab>
+        </TabPane>
+    </center>
+    
+    <!-- Pied de page -->
+    <bottom>
+        <HBox styleClass="footer" alignment="CENTER_LEFT" spacing="10">
+            <padding>
+                <Insets top="10" right="20" bottom="10" left="20"/>
+            </padding>
+            <Label text="© 2025 BigPharma - Tous droits réservés" style="-fx-text-fill: #757575;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label text="Version 1.0.0" style="-fx-text-fill: #757575;"/>
+        </HBox>
+    </bottom>
+    
+</BorderPane>

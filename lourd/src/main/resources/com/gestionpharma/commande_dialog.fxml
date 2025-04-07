@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import java.net.URL?>
+
+<DialogPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.gestionpharma.controllers.CommandeDialogController">
+    <content>
+        <GridPane hgap="10" vgap="10">
+            <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
+            
+            <Label text="Fournisseur :" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+            <ComboBox fx:id="fournisseurCombo" GridPane.columnIndex="1" GridPane.rowIndex="0" prefWidth="300" />
+            
+            <Label text="Date de commande :" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+            <DatePicker fx:id="dateCommandePicker" GridPane.columnIndex="1" GridPane.rowIndex="1" promptText="JJ/MM/AAAA" />
+            
+            <Label text="Statut :" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+            <ComboBox fx:id="statutCombo" GridPane.columnIndex="1" GridPane.rowIndex="2" prefWidth="300" />
+            
+            <Label text="Notes :" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+            <TextArea fx:id="notesField" GridPane.columnIndex="1" GridPane.rowIndex="3" prefHeight="60" />
+            
+            <Label text="Produits commandés :" GridPane.columnIndex="0" GridPane.rowIndex="4" GridPane.valignment="TOP" />
+            
+            <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="4">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Button fx:id="addProduitButton" text="Ajouter produit" onAction="#handleAddProduit" />
+                    <Label text="Sélectionnez des produits à ajouter à la commande" />
+                </HBox>
+                
+                <TableView fx:id="produitsTable" prefHeight="200">
+                    <columns>
+                        <TableColumn fx:id="produitNomColumn" text="Nom du produit" prefWidth="150" />
+                        <TableColumn fx:id="quantiteColumn" text="Quantité" prefWidth="80" />
+                        <TableColumn fx:id="prixUnitaireColumn" text="Prix unitaire" prefWidth="100" />
+                        <TableColumn fx:id="totalColumn" text="Total" prefWidth="80" />
+                        <TableColumn fx:id="actionsColumn" text="Actions" prefWidth="80" />
+                    </columns>
+                </TableView>
+                
+                <HBox spacing="10" alignment="CENTER_RIGHT">
+                    <Label text="Total de la commande :" style="-fx-font-weight: bold;" />
+                    <Label fx:id="totalCommandeLabel" text="0.00 €" style="-fx-font-weight: bold;" />
+                </HBox>
+            </VBox>
+            
+            <columnConstraints>
+                <ColumnConstraints hgrow="NEVER" minWidth="120" prefWidth="140" />
+                <ColumnConstraints hgrow="ALWAYS" minWidth="300" prefWidth="450" />
+            </columnConstraints>
+        </GridPane>
+    </content>
+    
+    <buttonTypes>
+        <ButtonType fx:constant="OK" />
+        <ButtonType fx:constant="CANCEL" />
+    </buttonTypes>
+    
+    <stylesheets>
+        <URL value="@/styles/application.css" />
+    </stylesheets>
+</DialogPane>

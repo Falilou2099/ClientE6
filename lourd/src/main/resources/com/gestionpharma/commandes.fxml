@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="com.gestionpharma.controllers.CommandeController">
+    <top>
+        <VBox spacing="10">
+            <padding>
+                <Insets bottom="10" left="20" right="20" top="20" />
+            </padding>
+            
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label text="Gestion des Commandes" styleClass="section-title">
+                    <font>
+                        <Font name="System Bold" size="24.0" />
+                    </font>
+                </Label>
+                <Region HBox.hgrow="ALWAYS" />
+                <Button fx:id="addButton" text="Ajouter une commande" styleClass="btn-primary" />
+            </HBox>
+            
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <TextField fx:id="searchField" prefWidth="300" promptText="Rechercher une commande..." />
+                <Button onAction="#rechercherCommandes" text="Rechercher" styleClass="btn-secondary" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Label text="Filtrer par statut:" />
+                <ComboBox fx:id="filterCombo" prefWidth="150" />
+            </HBox>
+        </VBox>
+    </top>
+    
+    <center>
+        <VBox spacing="10">
+            <padding>
+                <Insets bottom="10" left="20" right="20" top="10" />
+            </padding>
+            
+            <TableView fx:id="commandesTable" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="idColumn" prefWidth="50" text="ID" />
+                    <TableColumn fx:id="fournisseurColumn" prefWidth="150" text="Fournisseur" />
+                    <TableColumn fx:id="dateCommandeColumn" prefWidth="100" text="Date commande" />
+                    <TableColumn fx:id="dateLivraisonColumn" prefWidth="100" text="Date livraison" />
+                    <TableColumn fx:id="statutColumn" prefWidth="100" text="Statut" />
+                    <TableColumn fx:id="montantColumn" prefWidth="100" text="Montant" />
+                    <TableColumn fx:id="actionsColumn" prefWidth="180" text="Actions" />
+                </columns>
+                <placeholder>
+                    <Label text="Aucune commande trouvée" />
+                </placeholder>
+            </TableView>
+        </VBox>
+    </center>
+    
+    <bottom>
+        <HBox spacing="20" alignment="CENTER_LEFT" style="-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1 0 0 0;">
+            <padding>
+                <Insets bottom="10" left="20" right="20" top="10" />
+            </padding>
+            
+            <VBox spacing="5">
+                <Label text="Montant total des commandes" styleClass="stats-label" />
+                <HBox alignment="CENTER_LEFT" spacing="5">
+                    <Label fx:id="totalCommandesLabel" text="0.00 €" styleClass="stats-value" />
+                </HBox>
+            </VBox>
+            
+            <Separator orientation="VERTICAL" />
+            
+            <VBox spacing="5">
+                <Label text="Commandes en attente" styleClass="stats-label" />
+                <HBox alignment="CENTER_LEFT" spacing="5">
+                    <Label fx:id="commandesEnAttenteLabel" text="0" styleClass="stats-value" />
+                </HBox>
+            </VBox>
+        </HBox>
+    </bottom>
+</BorderPane>
