@@ -1,0 +1,15 @@
+RewriteEngine On
+RewriteBase /bigpharma/public/
+
+# Ignorer les fichiers et répertoires existants
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Rediriger toutes les requêtes vers index.php
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+
+# Autoriser l'accès à index.php
+<Files "index.php">
+    Order Allow,Deny
+    Allow from all
+</Files>
