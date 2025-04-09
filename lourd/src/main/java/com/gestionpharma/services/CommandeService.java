@@ -583,4 +583,36 @@ public class CommandeService {
         }
         tables.close();
     }
+    
+    /**
+     * Récupère les commandes par statut
+     * @param pharmacieId ID de la pharmacie
+     * @param status Statut de commande (en cours, livrée, annulée, etc.)
+     * @return Liste des commandes ayant le statut spécifié
+     */
+    public List<Commande> getCommandesByStatus(int pharmacieId, String status) {
+        List<Commande> commandes = new ArrayList<>();
+        String query = "SELECT c.*, f.nom as fournisseur_nom FROM commandes c " +
+                       "JOIN fournisseurs f ON c.fournisseur_id = f.id " +
+                       "WHERE c.pharmacie_id = ? AND c.statut = ? ORDER BY c.date_commande DESC";
+        
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            pstmt.setInt(1, pharmacieId);
+            pstmt.setString(2, status);
+            ResultSet rs = pstmt.executeQuery();
+            
+            while (rs.next()) {
+                Commande commande = mapResultSetToCommande(rs);
+                commandes.add(commande);
+            }
+            
+        } catch (SQLException e) {
+            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
+                    "Impossible de récupérer les commandes par statut : " + e.getMessage());
+        }
+        
+        return commandes;
+    }
 }

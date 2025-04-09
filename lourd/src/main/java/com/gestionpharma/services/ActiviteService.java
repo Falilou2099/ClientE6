@@ -234,4 +234,15 @@ public class ActiviteService {
         
         return activite;
     }
+    
+    /**
+     * Alias pour getActivitesRecentes
+     * Récupère les activités récentes d'une pharmacie
+     * @param pharmacieId ID de la pharmacie
+     * @param limit Nombre maximum d'activités à récupérer
+     * @return Liste des activités récentes
+     */
+    public List<Activite> getRecentActivities(int pharmacieId, int limit) {
+        return getActivitesRecentes(pharmacieId, limit);
+    }
 }

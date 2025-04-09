@@ -228,4 +228,31 @@ public class FournisseurService {
     public List<Fournisseur> getFournisseursByPharmacie(int pharmacieId) {
         return getAllFournisseurs(pharmacieId);
     }
+    
+    /**
+     * Ajoute un nouveau fournisseur (alias pour ajouterFournisseur)
+     * @param fournisseur Fournisseur à ajouter
+     * @return true si l'ajout a réussi, false sinon
+     */
+    public boolean addFournisseur(Fournisseur fournisseur) {
+        return ajouterFournisseur(fournisseur, fournisseur.getPharmacieId());
+    }
+    
+    /**
+     * Met à jour un fournisseur existant (alias pour modifierFournisseur)
+     * @param fournisseur Fournisseur à mettre à jour
+     * @return true si la mise à jour a réussi, false sinon
+     */
+    public boolean updateFournisseur(Fournisseur fournisseur) {
+        return modifierFournisseur(fournisseur);
+    }
+    
+    /**
+     * Supprime un fournisseur (alias pour supprimerFournisseur)
+     * @param fournisseurId ID du fournisseur à supprimer
+     * @return true si la suppression a réussi, false sinon
+     */
+    public boolean deleteFournisseur(int fournisseurId) {
+        return supprimerFournisseur(fournisseurId);
+    }
 }

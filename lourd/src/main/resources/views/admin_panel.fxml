@@ -235,11 +235,6 @@
                 </BorderPane>
             </Tab>
             
-            <!-- Gestion des commandes -->
-            <Tab text="Commandes">
-                <fx:include source="../com/gestionpharma/commandes.fxml"/>
-            </Tab>
-            
             <!-- Gestion des stocks -->
             <Tab text="Stocks">
                 <BorderPane>

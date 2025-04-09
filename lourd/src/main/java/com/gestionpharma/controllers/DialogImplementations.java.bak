@@ -12,11 +12,12 @@ import com.gestionpharma.models.*;
 import com.gestionpharma.utils.AlertUtils;
 
 /**
- * Classe contenant les implémentations des dialogues pour ajouter et modifier
+ * Classe abstraite contenant les implémentations des dialogues pour ajouter et modifier
  * les produits, fournisseurs et commandes.
  * Ces méthodes sont à copier dans la classe AdminPanelController.
+ * Cette classe est abstraite et ne doit pas être instanciée directement.
  */
-public class DialogImplementations {
+public abstract class DialogImplementations {
 
     /**
      * Méthode utilitaire pour valider le formulaire de fournisseur
@@ -96,7 +97,7 @@ public class DialogImplementations {
             Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
             saveButton.setDisable(true);
             
-            // Valider les champs obligatoires
+            // Ajouter des écouteurs pour valider le formulaire en temps réel
             nomField.textProperty().addListener((observable, oldValue, newValue) -> {
                 validateSupplierForm(saveButton, nomField, contactField, telephoneField, emailField, typeMedicamentsField);
             });
@@ -124,10 +125,10 @@ public class DialogImplementations {
             if (result.isPresent() && result.get() == saveButtonType) {
                 // Récupérer les valeurs des champs
                 nouveauFournisseur.setNom(nomField.getText().trim());
-                nouveauFournisseur.setAdresse(contactField.getText().trim()); // On utilise le champ adresse pour stocker la personne contact
+                nouveauFournisseur.setAdresse(""); // À compléter selon votre modèle
                 nouveauFournisseur.setTelephone(telephoneField.getText().trim());
                 nouveauFournisseur.setEmail(emailField.getText().trim());
-                nouveauFournisseur.setSiret(typeMedicamentsField.getValue()); // On utilise le champ SIRET pour stocker le type de médicaments
+                nouveauFournisseur.setSiret(""); // À compléter selon votre modèle
                 
                 boolean success = fournisseurService.ajouterFournisseur(nouveauFournisseur, pharmacieId);
                 
@@ -156,6 +157,7 @@ public class DialogImplementations {
     @FXML
     protected void handleEditSupplier() {
         try {
+            // Vérifier qu'un fournisseur est sélectionné
             Fournisseur selectedSupplier = suppliersTable.getSelectionModel().getSelectedItem();
             if (selectedSupplier == null) {
                 AlertUtils.showWarningAlert("Attention", "Aucun fournisseur sélectionné", 
@@ -169,7 +171,7 @@ public class DialogImplementations {
             dialog.setHeaderText("Modifier les informations du Fournisseur");
             
             // Définir les boutons
-            ButtonType saveButtonType = new ButtonType("Modifier", ButtonBar.ButtonData.OK_DONE);
+            ButtonType saveButtonType = new ButtonType("Enregistrer", ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
             
             // Créer la grille pour les champs
@@ -178,18 +180,18 @@ public class DialogImplementations {
             grid.setVgap(10);
             grid.setPadding(new Insets(20, 150, 10, 10));
             
-            // Créer les champs avec les valeurs actuelles
+            // Créer les champs
             TextField idField = new TextField(String.valueOf(selectedSupplier.getId()));
             idField.setDisable(true);
             
             TextField nomField = new TextField(selectedSupplier.getNom());
-            TextField contactField = new TextField(selectedSupplier.getAdresse()); // Utilise adresse pour personne contact
+            TextField contactField = new TextField(); // À ajuster selon votre modèle
             TextField telephoneField = new TextField(selectedSupplier.getTelephone());
             TextField emailField = new TextField(selectedSupplier.getEmail());
             
             ComboBox<String> typeMedicamentsField = new ComboBox<>();
             typeMedicamentsField.getItems().addAll("Antibiotiques", "Analgésiques", "Anti-inflammatoires", "Cardiovasculaires", "Dermatologiques", "Autres");
-            typeMedicamentsField.setValue(selectedSupplier.getSiret()); // Utilise SIRET pour type de médicaments
+            typeMedicamentsField.setValue("Autres"); // À ajuster selon votre modèle
             
             // Ajouter les champs à la grille
             grid.add(new Label("ID :"), 0, 0);
@@ -210,7 +212,7 @@ public class DialogImplementations {
             // Activer/Désactiver le bouton Enregistrer selon la validation des champs
             Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
             
-            // Valider les champs obligatoires
+            // Ajouter des écouteurs pour valider le formulaire en temps réel
             nomField.textProperty().addListener((observable, oldValue, newValue) -> {
                 validateSupplierForm(saveButton, nomField, contactField, telephoneField, emailField, typeMedicamentsField);
             });
@@ -239,12 +241,10 @@ public class DialogImplementations {
             
             // Traiter la réponse
             if (result.isPresent() && result.get() == saveButtonType) {
-                // Récupérer les valeurs des champs
+                // Mettre à jour les valeurs du fournisseur
                 selectedSupplier.setNom(nomField.getText().trim());
-                selectedSupplier.setAdresse(contactField.getText().trim());
                 selectedSupplier.setTelephone(telephoneField.getText().trim());
                 selectedSupplier.setEmail(emailField.getText().trim());
-                selectedSupplier.setSiret(typeMedicamentsField.getValue());
                 
                 boolean success = fournisseurService.modifierFournisseur(selectedSupplier);
                 
@@ -273,22 +273,19 @@ public class DialogImplementations {
     @FXML
     protected void handleCreateOrder() {
         try {
-            // Vérifier qu'un fournisseur est sélectionné
-            Fournisseur selectedSupplier = suppliersTable.getSelectionModel().getSelectedItem();
-            if (selectedSupplier == null) {
-                AlertUtils.showWarningAlert("Attention", "Aucun fournisseur sélectionné", 
-                        "Veuillez sélectionner un fournisseur pour créer une commande.");
-                return;
-            }
+            // Créer une nouvelle commande
+            Commande nouvelleCommande = new Commande();
+            nouvelleCommande.setDateCommande(LocalDate.now());
+            nouvelleCommande.setStatut("En attente");
             
             // Créer la boîte de dialogue
             Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.setTitle("Création d'une commande");
-            dialog.setHeaderText("Nouvelle commande pour " + selectedSupplier.getNom());
+            dialog.setTitle("Gestion des Commandes");
+            dialog.setHeaderText("Créer une nouvelle commande");
             
             // Définir les boutons
-            ButtonType saveButtonType = new ButtonType("Créer", ButtonBar.ButtonData.OK_DONE);
-            dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+            ButtonType createButtonType = new ButtonType("Créer", ButtonBar.ButtonData.OK_DONE);
+            dialog.getDialogPane().getButtonTypes().addAll(createButtonType, ButtonType.CANCEL);
             
             // Créer la grille pour les champs
             GridPane grid = new GridPane();
@@ -296,96 +293,102 @@ public class DialogImplementations {
             grid.setVgap(10);
             grid.setPadding(new Insets(20, 150, 10, 10));
             
-            // Créer les champs
-            DatePicker dateLivraisonField = new DatePicker(LocalDate.now().plusDays(7));
+            // Récupérer la liste des fournisseurs
+            List<Fournisseur> fournisseurs = fournisseurService.getAllFournisseurs(pharmacieId);
+            ComboBox<Fournisseur> fournisseurComboBox = new ComboBox<>();
+            fournisseurComboBox.getItems().addAll(fournisseurs);
+            fournisseurComboBox.setPromptText("Sélectionner un fournisseur");
             
-            TextField montantField = new TextField();
-            montantField.setPromptText("Montant total");
+            // Récupérer la liste des produits
+            List<Produit> produits = produitService.getAllProduits(pharmacieId);
+            ComboBox<Produit> produitComboBox = new ComboBox<>();
+            produitComboBox.getItems().addAll(produits);
+            produitComboBox.setPromptText("Sélectionner un produit");
             
-            ComboBox<String> statutField = new ComboBox<>();
-            statutField.getItems().addAll("En attente", "En cours", "Livrée", "Annulée");
-            statutField.setValue("En attente");
+            // Champ pour la quantité
+            TextField quantiteField = new TextField();
+            quantiteField.setPromptText("Quantité");
             
-            TextArea notesField = new TextArea();
-            notesField.setPromptText("Notes sur la commande");
-            notesField.setPrefRowCount(3);
+            // Notes / commentaires
+            TextArea notesArea = new TextArea();
+            notesArea.setPromptText("Notes ou instructions spéciales");
+            notesArea.setPrefRowCount(5);
             
             // Ajouter les champs à la grille
-            grid.add(new Label("Fournisseur:"), 0, 0);
-            grid.add(new Label(selectedSupplier.getNom()), 1, 0);
-            grid.add(new Label("Date de livraison prévue *:"), 0, 1);
-            grid.add(dateLivraisonField, 1, 1);
-            grid.add(new Label("Montant total *:"), 0, 2);
-            grid.add(montantField, 1, 2);
-            grid.add(new Label("Statut *:"), 0, 3);
-            grid.add(statutField, 1, 3);
-            grid.add(new Label("Notes:"), 0, 4);
-            grid.add(notesField, 1, 4);
+            grid.add(new Label("Fournisseur :"), 0, 0);
+            grid.add(fournisseurComboBox, 1, 0);
+            grid.add(new Label("Produit :"), 0, 1);
+            grid.add(produitComboBox, 1, 1);
+            grid.add(new Label("Quantité :"), 0, 2);
+            grid.add(quantiteField, 1, 2);
+            grid.add(new Label("Notes :"), 0, 3);
+            grid.add(notesArea, 1, 3);
             
             dialog.getDialogPane().setContent(grid);
             
-            // Activer/Désactiver le bouton Enregistrer selon la validation des champs
-            Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
-            saveButton.setDisable(true);
+            // Activer/Désactiver le bouton Créer selon la validation des champs
+            Node createButton = dialog.getDialogPane().lookupButton(createButtonType);
+            createButton.setDisable(true);
             
-            // Valider les champs obligatoires
-            montantField.textProperty().addListener((observable, oldValue, newValue) -> {
-                boolean isValid = dateLivraisonField.getValue() != null && 
-                                 !montantField.getText().trim().isEmpty() && 
-                                 statutField.getValue() != null;
-                saveButton.setDisable(!isValid);
+            // Validation du formulaire
+            fournisseurComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+                boolean isValid = fournisseurComboBox.getValue() != null && 
+                                 produitComboBox.getValue() != null && 
+                                 !quantiteField.getText().trim().isEmpty();
+                createButton.setDisable(!isValid);
             });
             
-            dateLivraisonField.valueProperty().addListener((observable, oldValue, newValue) -> {
-                boolean isValid = dateLivraisonField.getValue() != null && 
-                                 !montantField.getText().trim().isEmpty() && 
-                                 statutField.getValue() != null;
-                saveButton.setDisable(!isValid);
+            produitComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+                boolean isValid = fournisseurComboBox.getValue() != null && 
+                                 produitComboBox.getValue() != null && 
+                                 !quantiteField.getText().trim().isEmpty();
+                createButton.setDisable(!isValid);
             });
             
-            statutField.valueProperty().addListener((observable, oldValue, newValue) -> {
-                boolean isValid = dateLivraisonField.getValue() != null && 
-                                 !montantField.getText().trim().isEmpty() && 
-                                 statutField.getValue() != null;
-                saveButton.setDisable(!isValid);
+            quantiteField.textProperty().addListener((observable, oldValue, newValue) -> {
+                boolean isValid = fournisseurComboBox.getValue() != null && 
+                                 produitComboBox.getValue() != null && 
+                                 !quantiteField.getText().trim().isEmpty();
+                createButton.setDisable(!isValid);
             });
             
             // Afficher la boite de dialogue et attendre la réponse
             Optional<ButtonType> result = dialog.showAndWait();
             
             // Traiter la réponse
-            if (result.isPresent() && result.get() == saveButtonType) {
-                // Créer la nouvelle commande
-                Commande nouvelleCommande = new Commande();
-                nouvelleCommande.setFournisseurId(selectedSupplier.getId());
-                nouvelleCommande.setPharmacieId(pharmacieId);
-                nouvelleCommande.setDateCommande(LocalDate.now());
-                nouvelleCommande.setDateLivraison(dateLivraisonField.getValue());
-                
+            if (result.isPresent() && result.get() == createButtonType) {
                 try {
-                    nouvelleCommande.setMontantTotal(Double.parseDouble(montantField.getText().trim()));
+                    // Récupérer les valeurs des champs
+                    Fournisseur fournisseur = fournisseurComboBox.getValue();
+                    Produit produit = produitComboBox.getValue();
+                    int quantite = Integer.parseInt(quantiteField.getText().trim());
+                    String notes = notesArea.getText().trim();
+                    
+                    // Créer la commande
+                    nouvelleCommande.setFournisseurId(fournisseur.getId());
+                    nouvelleCommande.setProduitId(produit.getId());
+                    nouvelleCommande.setQuantite(quantite);
+                    nouvelleCommande.setNotes(notes);
+                    nouvelleCommande.setPharmacieId(pharmacieId);
+                    
+                    // Enregistrer la commande
+                    boolean success = commandeService.ajouterCommande(nouvelleCommande);
+                    
+                    if (success) {
+                        // Enregistrer l'activité
+                        activiteService.ajouterActivite("Commande", "Création d'une commande pour " + produit.getNom(), 
+                                currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
+                        
+                        // Recharger les données
+                        loadOrdersData();
+                        loadDashboardData();
+                        
+                        AlertUtils.showInfoAlert("Succès", "Commande créée", 
+                                "La commande a été créée avec succès.");
+                    }
                 } catch (NumberFormatException e) {
                     AlertUtils.showErrorAlert("Erreur", "Format incorrect", 
-                            "Veuillez entrer un montant valide.");
-                    return;
-                }
-                
-                nouvelleCommande.setStatut(statutField.getValue());
-                nouvelleCommande.setNotes(notesField.getText().trim());
-                
-                boolean success = commandeService.ajouterCommande(nouvelleCommande);
-                
-                if (success) {
-                    // Enregistrer l'activité
-                    activiteService.ajouterActivite("Commande", "Création d'une commande pour " + selectedSupplier.getNom(), 
-                            currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
-                    
-                    // Recharger les données
-                    loadOrdersData();
-                    loadDashboardData();
-                    
-                    AlertUtils.showInfoAlert("Succès", "Commande créée", 
-                            "La commande a été créée avec succès.");
+                            "Veuillez entrer une quantité valide.");
                 }
             }
         } catch (Exception e) {
@@ -401,6 +404,7 @@ public class DialogImplementations {
     @FXML
     protected void handleEditProduct() {
         try {
+            // Vérifier qu'un produit est sélectionné
             Produit selectedProduct = productsTable.getSelectionModel().getSelectedItem();
             if (selectedProduct == null) {
                 AlertUtils.showWarningAlert("Attention", "Aucun produit sélectionné", 
@@ -414,7 +418,7 @@ public class DialogImplementations {
             dialog.setHeaderText("Modifier les informations du Produit");
             
             // Définir les boutons
-            ButtonType saveButtonType = new ButtonType("Modifier", ButtonBar.ButtonData.OK_DONE);
+            ButtonType saveButtonType = new ButtonType("Enregistrer", ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
             
             // Créer la grille pour les champs
@@ -435,20 +439,18 @@ public class DialogImplementations {
             TextField prixVenteField = new TextField(String.valueOf(selectedProduct.getPrixVente()));
             
             ComboBox<String> categorieField = new ComboBox<>();
-            categorieField.getItems().addAll("Médicament", "Parapharmacie", "Matériel médical", "Compléments alimentaires", "Autres");
+            List<String> categories = produitService.getAllCategories(pharmacieId);
+            categorieField.getItems().addAll(categories);
             categorieField.setValue(selectedProduct.getCategorie());
             
-            DatePicker dateExpirationField = new DatePicker();
-            if (selectedProduct.getDateExpiration() != null) {
-                dateExpirationField.setValue(selectedProduct.getDateExpiration());
-            }
+            DatePicker dateExpirationField = new DatePicker(selectedProduct.getDateExpiration());
             
             TextField seuilAlerteField = new TextField(String.valueOf(selectedProduct.getSeuilAlerte()));
             
             // Ajouter les champs à la grille
             grid.add(new Label("ID :"), 0, 0);
             grid.add(idField, 1, 0);
-            grid.add(new Label("Nom du Produit *:"), 0, 1);
+            grid.add(new Label("Nom *:"), 0, 1);
             grid.add(nomField, 1, 1);
             grid.add(new Label("Description :"), 0, 2);
             grid.add(descriptionField, 1, 2);
@@ -468,7 +470,7 @@ public class DialogImplementations {
             // Activer/Désactiver le bouton Enregistrer selon la validation des champs
             Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
             
-            // Valider les champs obligatoires
+            // Validation des champs
             nomField.textProperty().addListener((observable, oldValue, newValue) -> {
                 boolean isValid = !nomField.getText().trim().isEmpty() && 
                                  !prixAchatField.getText().trim().isEmpty() && 

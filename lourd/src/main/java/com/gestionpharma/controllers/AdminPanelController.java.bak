@@ -12,7 +12,6 @@ import javafx.event.ActionEvent;
 import javafx.scene.layout.GridPane;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
-import javafx.application.Platform;
 import java.util.Optional;
 
 import java.net.URL;
@@ -48,9 +47,6 @@ public class AdminPanelController implements Initializable {
     // Admin et pharmacie courante
     private Admin currentAdmin;
     private int pharmacieId;
-    
-    // Liste des activités
-    private ObservableList<Activite> activitiesList = FXCollections.observableArrayList();
     
     // Labels d'en-tête
     @FXML private Label adminNameLabel;
@@ -95,13 +91,6 @@ public class AdminPanelController implements Initializable {
     @FXML private TableColumn<Fournisseur, String> supplierSiretColumn;
     @FXML private TextField supplierSearchField;
     
-    // Table et colonnes pour les activités récentes
-    @FXML private TableView<Activite> recentActivitiesTable;
-    @FXML private TableColumn<Activite, LocalDateTime> activityDateColumn;
-    @FXML private TableColumn<Activite, String> activityTypeColumn;
-    @FXML private TableColumn<Activite, String> activityDescriptionColumn;
-    @FXML private TableColumn<Activite, String> activityUserColumn;
-    
     // Tableaux et colonnes pour les commandes
     @FXML private TableView<Commande> ordersTable;
     @FXML private TableColumn<Commande, Integer> orderIdColumn;
@@ -125,12 +114,19 @@ public class AdminPanelController implements Initializable {
     @FXML private TextField stockSearchField;
     @FXML private ComboBox<String> stockAlertFilter;
     
+    // Tableau des activités récentes
+    @FXML private TableView<Activite> activitiesTable;
+    @FXML private TableColumn<Activite, LocalDateTime> activityDateColumn;
+    @FXML private TableColumn<Activite, String> activityTypeColumn;
+    @FXML private TableColumn<Activite, String> activityDescriptionColumn;
+    @FXML private TableColumn<Activite, String> activityUserColumn;
     
     // Listes observables pour les tableaux
     private ObservableList<Produit> productsList = FXCollections.observableArrayList();
     private ObservableList<Fournisseur> suppliersList = FXCollections.observableArrayList();
     private ObservableList<Commande> ordersList = FXCollections.observableArrayList();
     private ObservableList<Stock> stocksList = FXCollections.observableArrayList();
+    private ObservableList<Activite> activitiesList = FXCollections.observableArrayList();
     
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -154,6 +150,7 @@ public class AdminPanelController implements Initializable {
         // Configurer les colonnes des tableaux
         configureTableColumns();
     }
+}
     
     /**
      * Applique les styles CSS pour améliorer la visibilité des éléments de l'interface
@@ -172,6 +169,7 @@ public class AdminPanelController implements Initializable {
         if (newProductsLabel != null) newProductsLabel.setStyle(VALUE_STYLE);
         if (stockAlertsLabel != null) stockAlertsLabel.setStyle(VALUE_STYLE + "; -fx-text-fill: #e74c3c;");
     }
+}
     
     /**
      * Définit l'administrateur courant et charge les données
@@ -187,36 +185,45 @@ public class AdminPanelController implements Initializable {
             try { loadPharmacyInfo(); } catch (Exception e) { 
                 System.out.println("Erreur lors du chargement des informations de la pharmacie: " + e.getMessage()); 
             }
+}
             
             try { loadDashboardData(); } catch (Exception e) { 
                 System.out.println("Erreur lors du chargement des données du tableau de bord: " + e.getMessage()); 
             }
+}
             
             try { loadProductsData(); } catch (Exception e) { 
                 System.out.println("Erreur lors du chargement des produits: " + e.getMessage()); 
             }
+}
             
             try { loadSuppliersData(); } catch (Exception e) { 
                 System.out.println("Erreur lors du chargement des fournisseurs: " + e.getMessage()); 
             }
+}
             
             try { loadOrdersData(); } catch (Exception e) { 
                 System.out.println("Erreur lors du chargement des commandes: " + e.getMessage()); 
             }
+}
             
             try { loadStockData(); } catch (Exception e) { 
                 System.out.println("Erreur lors du chargement des stocks: " + e.getMessage()); 
             }
+}
             
             try { loadActivitiesData(); } catch (Exception e) { 
                 System.out.println("Erreur lors du chargement des activités: " + e.getMessage()); 
             }
+}
             
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println("Erreur générale lors de l'initialisation: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Charge les informations de la pharmacie
@@ -228,12 +235,15 @@ public class AdminPanelController implements Initializable {
             if (pharmacie != null) {
                 pharmacyNameLabel.setText(pharmacie.getNom());
             }
+}
         } catch (Exception e) {
             e.printStackTrace();
             AlertUtils.showErrorAlert("Erreur", "Erreur lors du chargement des informations", 
                     "Impossible de charger les informations de la pharmacie: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Charge les données du tableau de bord
@@ -263,7 +273,9 @@ public class AdminPanelController implements Initializable {
                     produit.getDateCreation().isAfter(thirtyDaysAgo)) {
                     newProducts++;
                 }
+}
             }
+}
             newProductsLabel.setText(String.valueOf(newProducts));
             
             // Nombre d'alertes de stock
@@ -272,7 +284,9 @@ public class AdminPanelController implements Initializable {
                 if (stock.getQuantite() <= stock.getQuantiteMinimum()) {
                     stockAlerts++;
                 }
+}
             }
+}
             stockAlertsLabel.setText(String.valueOf(stockAlerts));
             
         } catch (Exception e) {
@@ -280,7 +294,9 @@ public class AdminPanelController implements Initializable {
             AlertUtils.showErrorAlert("Erreur", "Erreur lors du chargement des données", 
                     "Impossible de charger les données du tableau de bord: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Initialise les filtres pour les tableaux
@@ -318,7 +334,9 @@ public class AdminPanelController implements Initializable {
             e.printStackTrace();
             System.out.println("Erreur lors de l'initialisation des filtres: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Configure les colonnes des tableaux
@@ -370,7 +388,9 @@ public class AdminPanelController implements Initializable {
             e.printStackTrace();
             System.out.println("Erreur lors de la configuration des colonnes: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Charge les données des produits
@@ -394,7 +414,9 @@ public class AdminPanelController implements Initializable {
             AlertUtils.showErrorAlert("Erreur", "Erreur lors du chargement des produits", 
                     "Impossible de charger les produits: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Charge les données des fournisseurs
@@ -418,7 +440,9 @@ public class AdminPanelController implements Initializable {
             AlertUtils.showErrorAlert("Erreur", "Erreur lors du chargement des fournisseurs", 
                     "Impossible de charger les fournisseurs: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Charge les données des commandes
@@ -442,7 +466,9 @@ public class AdminPanelController implements Initializable {
             AlertUtils.showErrorAlert("Erreur", "Erreur lors du chargement des commandes", 
                     "Impossible de charger les commandes: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Charge les données des stocks
@@ -466,7 +492,9 @@ public class AdminPanelController implements Initializable {
             AlertUtils.showErrorAlert("Erreur", "Erreur lors du chargement des stocks", 
                     "Impossible de charger les stocks: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Charge les données des activités récentes
@@ -483,14 +511,16 @@ public class AdminPanelController implements Initializable {
             activitiesList.addAll(activities);
             
             // Mettre à jour le tableau
-            recentActivitiesTable.setItems(activitiesList);
+            activitiesTable.setItems(activitiesList);
             
         } catch (Exception e) {
             e.printStackTrace();
             AlertUtils.showErrorAlert("Erreur", "Erreur lors du chargement des activités", 
                     "Impossible de charger les activités récentes: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Filtre les produits en fonction des critères de recherche et de la catégorie sélectionnée
@@ -512,7 +542,9 @@ public class AdminPanelController implements Initializable {
                     } else {
                         return produit.getCategorie().equals(categoryFilter);
                     }
+}
                 }
+}
                 
                 // Comparer le nom et la description du produit avec le texte de recherche
                 String lowerCaseFilter = searchText.toLowerCase();
@@ -525,6 +557,7 @@ public class AdminPanelController implements Initializable {
                 } else if (String.valueOf(produit.getId()).contains(lowerCaseFilter)) {
                     matchesSearch = true;
                 }
+}
                 
                 // Vérifier si la catégorie correspond
                 boolean matchesCategory = categoryFilter.equals("Toutes les catégories") || 
@@ -544,7 +577,9 @@ public class AdminPanelController implements Initializable {
             e.printStackTrace();
             System.out.println("Erreur lors du filtrage des produits: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Filtre les fournisseurs en fonction des critères de recherche
@@ -562,6 +597,7 @@ public class AdminPanelController implements Initializable {
                 if (searchText == null || searchText.isEmpty()) {
                     return true;
                 }
+}
                 
                 // Comparer le nom, l'adresse, le téléphone et l'email du fournisseur avec le texte de recherche
                 String lowerCaseFilter = searchText.toLowerCase();
@@ -579,6 +615,7 @@ public class AdminPanelController implements Initializable {
                 } else if (String.valueOf(fournisseur.getId()).contains(lowerCaseFilter)) {
                     return true;
                 }
+}
                 
                 return false;
             });
@@ -594,7 +631,9 @@ public class AdminPanelController implements Initializable {
             e.printStackTrace();
             System.out.println("Erreur lors du filtrage des fournisseurs: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Filtre les commandes en fonction des critères de recherche et du statut sélectionné
@@ -613,6 +652,7 @@ public class AdminPanelController implements Initializable {
                 if ((searchText == null || searchText.isEmpty()) && statusFilter.equals("Tous les statuts")) {
                     return true;
                 }
+}
                 
                 // Vérifier si le statut correspond
                 boolean matchesStatus = statusFilter.equals("Tous les statuts") || 
@@ -622,6 +662,7 @@ public class AdminPanelController implements Initializable {
                 if (searchText == null || searchText.isEmpty()) {
                     return matchesStatus;
                 }
+}
                 
                 // Comparer l'ID, le fournisseur et le statut de la commande avec le texte de recherche
                 String lowerCaseFilter = searchText.toLowerCase();
@@ -634,6 +675,7 @@ public class AdminPanelController implements Initializable {
                 } else if (commande.getStatut().toLowerCase().contains(lowerCaseFilter)) {
                     matchesSearch = true;
                 }
+}
                 
                 return matchesSearch && matchesStatus;
             });
@@ -649,7 +691,9 @@ public class AdminPanelController implements Initializable {
             e.printStackTrace();
             System.out.println("Erreur lors du filtrage des commandes: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Filtre les stocks en fonction des critères de recherche et du filtre d'alerte sélectionné
@@ -668,6 +712,7 @@ public class AdminPanelController implements Initializable {
                 if ((searchText == null || searchText.isEmpty()) && alertFilter.equals("Tous les stocks")) {
                     return true;
                 }
+}
                 
                 // Vérifier si le filtre d'alerte correspond
                 boolean matchesAlert = false;
@@ -682,11 +727,13 @@ public class AdminPanelController implements Initializable {
                 } else if (alertFilter.equals("Stocks élevés") && stock.getQuantite() >= stock.getQuantiteMinimum() * 2) {
                     matchesAlert = true;
                 }
+}
                 
                 // Si le texte de recherche est vide, filtrer uniquement par alerte
                 if (searchText == null || searchText.isEmpty()) {
                     return matchesAlert;
                 }
+}
                 
                 // Comparer l'ID du produit, le nom du produit et le statut du stock avec le texte de recherche
                 String lowerCaseFilter = searchText.toLowerCase();
@@ -699,6 +746,7 @@ public class AdminPanelController implements Initializable {
                 } else if (stock.getStatut().toLowerCase().contains(lowerCaseFilter)) {
                     matchesSearch = true;
                 }
+}
                 
                 return matchesSearch && matchesAlert;
             });
@@ -714,7 +762,9 @@ public class AdminPanelController implements Initializable {
             e.printStackTrace();
             System.out.println("Erreur lors du filtrage des stocks: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Gère l'ajout d'un nouveau produit
@@ -784,14 +834,17 @@ public class AdminPanelController implements Initializable {
                         if (nomField.getText().isEmpty()) {
                             throw new IllegalArgumentException("Le nom du produit est obligatoire");
                         }
+}
                         
                         if (prixVenteField.getText().isEmpty() || prixAchatField.getText().isEmpty()) {
                             throw new IllegalArgumentException("Les prix sont obligatoires");
                         }
+}
                         
                         if (categorieComboBox.getValue() == null) {
                             throw new IllegalArgumentException("La catégorie est obligatoire");
                         }
+}
                         
                         // Créer un nouveau produit
                         Produit produit = new Produit();
@@ -806,6 +859,7 @@ public class AdminPanelController implements Initializable {
                         if (dateExpirationPicker.getValue() != null) {
                             produit.setDateExpiration(dateExpirationPicker.getValue());
                         }
+}
                         
                         return produit;
                     } catch (NumberFormatException e) {
@@ -816,7 +870,9 @@ public class AdminPanelController implements Initializable {
                         AlertUtils.showErrorAlert("Erreur", "Champs obligatoires", e.getMessage());
                         return null;
                     }
+}
                 }
+}
                 return null;
             });
             
@@ -843,11 +899,13 @@ public class AdminPanelController implements Initializable {
                         AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du produit", 
                                 "Impossible d'ajouter le produit. Veuillez réessayer.");
                     }
+}
                 } catch (Exception e) {
                     e.printStackTrace();
                     AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du produit", 
                             "Impossible d'ajouter le produit: " + e.getMessage());
                 }
+}
             });
             
         } catch (Exception e) {
@@ -855,7 +913,9 @@ public class AdminPanelController implements Initializable {
             AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du produit", 
                     "Impossible d'ajouter le produit: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Gère la modification d'un produit
@@ -870,6 +930,7 @@ public class AdminPanelController implements Initializable {
                         "Veuillez sélectionner un produit à modifier.");
                 return;
             }
+}
             
             // Créer un dialogue pour modifier les informations du produit
             Dialog<Produit> dialog = new Dialog<>();
@@ -900,6 +961,7 @@ public class AdminPanelController implements Initializable {
             if (selectedProduct.getDateExpiration() != null) {
                 dateExpirationPicker.setValue(selectedProduct.getDateExpiration());
             }
+}
             
             // Ajouter les champs à la grille
             grid.add(new Label("Nom:"), 0, 0);
@@ -928,14 +990,17 @@ public class AdminPanelController implements Initializable {
                         if (nomField.getText().isEmpty()) {
                             throw new IllegalArgumentException("Le nom du produit est obligatoire");
                         }
+}
                         
                         if (prixVenteField.getText().isEmpty() || prixAchatField.getText().isEmpty()) {
                             throw new IllegalArgumentException("Les prix sont obligatoires");
                         }
+}
                         
                         if (categorieComboBox.getValue() == null) {
                             throw new IllegalArgumentException("La catégorie est obligatoire");
                         }
+}
                         
                         // Mettre à jour le produit
                         selectedProduct.setNom(nomField.getText());
@@ -947,6 +1012,7 @@ public class AdminPanelController implements Initializable {
                         if (dateExpirationPicker.getValue() != null) {
                             selectedProduct.setDateExpiration(dateExpirationPicker.getValue());
                         }
+}
                         
                         return selectedProduct;
                     } catch (NumberFormatException e) {
@@ -957,7 +1023,9 @@ public class AdminPanelController implements Initializable {
                         AlertUtils.showErrorAlert("Erreur", "Champs obligatoires", e.getMessage());
                         return null;
                     }
+}
                 }
+}
                 return null;
             });
             
@@ -983,11 +1051,13 @@ public class AdminPanelController implements Initializable {
                         AlertUtils.showErrorAlert("Erreur", "Erreur lors de la modification du produit", 
                                 "Impossible de modifier le produit. Veuillez réessayer.");
                     }
+}
                 } catch (Exception e) {
                     e.printStackTrace();
                     AlertUtils.showErrorAlert("Erreur", "Erreur lors de la modification du produit", 
                             "Impossible de modifier le produit: " + e.getMessage());
                 }
+}
             });
             
         } catch (Exception e) {
@@ -995,7 +1065,9 @@ public class AdminPanelController implements Initializable {
             AlertUtils.showErrorAlert("Erreur", "Erreur lors de la modification du produit", 
                     "Impossible de modifier le produit: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Gère la suppression d'un produit
@@ -1010,23 +1082,23 @@ public class AdminPanelController implements Initializable {
                         "Veuillez sélectionner un produit à supprimer.");
                 return;
             }
+}
             
             // Demander confirmation
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle("Confirmation de suppression");
-            alert.setHeaderText("Êtes-vous sûr de vouloir supprimer ce produit ?");
-            alert.setContentText("Cette action est irréversible.");
+            alert.setHeaderText("Supprimer le produit");
+            alert.setContentText("Voulez-vous vraiment supprimer le produit \"" + selectedProduct.getNom() + "\" ?");
             
             Optional<ButtonType> result = alert.showAndWait();
-            if (result.get() == ButtonType.OK){
+            if (result.isPresent() && result.get() == ButtonType.OK) {
                 // Supprimer le produit
                 boolean success = produitService.deleteProduit(selectedProduct.getId());
                 
                 if (success) {
                     // Enregistrer l'activité
-                    activiteService.ajouterActivite("Suppression", 
-                            "Suppression du produit: " + selectedProduct.getNom(), 
-                            currentAdmin.getUsername(), pharmacieId);
+                    activiteService.ajouterActivite("Produit", "Suppression du produit: " + selectedProduct.getNom(), 
+                            currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
                     
                     // Recharger les données
                     loadProductsData();
@@ -1038,65 +1110,19 @@ public class AdminPanelController implements Initializable {
                     AlertUtils.showErrorAlert("Erreur", "Erreur lors de la suppression du produit", 
                             "Impossible de supprimer le produit. Veuillez réessayer.");
                 }
+}
             }
+}
             
         } catch (Exception e) {
             e.printStackTrace();
             AlertUtils.showErrorAlert("Erreur", "Erreur lors de la suppression du produit", 
                     "Impossible de supprimer le produit: " + e.getMessage());
         }
+}
     }
-
-    /**
-     * Gère la suppression d'un fournisseur
-     */
-    @FXML
-    protected void handleDeleteSupplier() {
-        try {
-            // Vérifier qu'un fournisseur est sélectionné
-            Fournisseur selectedSupplier = suppliersTable.getSelectionModel().getSelectedItem();
-            if (selectedSupplier == null) {
-                AlertUtils.showWarningAlert("Attention", "Aucun fournisseur sélectionné", 
-                        "Veuillez sélectionner un fournisseur à supprimer.");
-                return;
-            }
-            
-            // Demander confirmation
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Confirmation de suppression");
-            alert.setHeaderText("Êtes-vous sûr de vouloir supprimer ce fournisseur ?");
-            alert.setContentText("Cette action est irréversible.");
-            
-            Optional<ButtonType> result = alert.showAndWait();
-            if (result.get() == ButtonType.OK){
-                // Supprimer le fournisseur
-                boolean success = fournisseurService.deleteFournisseur(selectedSupplier.getId());
-                
-                if (success) {
-                    // Enregistrer l'activité
-                    activiteService.ajouterActivite("Suppression", 
-                            "Suppression du fournisseur: " + selectedSupplier.getNom(), 
-                            currentAdmin.getUsername(), pharmacieId);
-                    
-                    // Recharger les données
-                    loadSuppliersData();
-                    loadDashboardData();
-                    
-                    AlertUtils.showInfoAlert("Succès", "Fournisseur supprimé", 
-                            "Le fournisseur a été supprimé avec succès.");
-                } else {
-                    AlertUtils.showErrorAlert("Erreur", "Erreur lors de la suppression du fournisseur", 
-                            "Impossible de supprimer le fournisseur. Veuillez réessayer.");
-                }
-            }
-            
-        } catch (Exception e) {
-            e.printStackTrace();
-            AlertUtils.showErrorAlert("Erreur", "Erreur lors de la suppression du fournisseur", 
-                    "Impossible de supprimer le fournisseur: " + e.getMessage());
-        }
-    }
-
+}
+    
     /**
      * Gère l'ajout d'un nouveau fournisseur
      */
@@ -1159,14 +1185,17 @@ public class AdminPanelController implements Initializable {
                         if (nomField.getText().isEmpty()) {
                             throw new IllegalArgumentException("Le nom du fournisseur est obligatoire");
                         }
+}
                         
                         if (telephoneField.getText().isEmpty()) {
                             throw new IllegalArgumentException("Le téléphone est obligatoire");
                         }
+}
                         
                         if (emailField.getText().isEmpty()) {
                             throw new IllegalArgumentException("L'email est obligatoire");
                         }
+}
                         
                         // Créer un nouveau fournisseur
                         Fournisseur fournisseur = new Fournisseur();
@@ -1182,7 +1211,9 @@ public class AdminPanelController implements Initializable {
                         AlertUtils.showErrorAlert("Erreur", "Champs obligatoires", e.getMessage());
                         return null;
                     }
+}
                 }
+}
                 return null;
             });
             
@@ -1209,11 +1240,13 @@ public class AdminPanelController implements Initializable {
                         AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du fournisseur", 
                                 "Impossible d'ajouter le fournisseur. Veuillez réessayer.");
                     }
+}
                 } catch (Exception e) {
                     e.printStackTrace();
                     AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du fournisseur", 
                             "Impossible d'ajouter le fournisseur: " + e.getMessage());
                 }
+}
             });
             
         } catch (Exception e) {
@@ -1221,7 +1254,9 @@ public class AdminPanelController implements Initializable {
             AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du fournisseur", 
                     "Impossible d'ajouter le fournisseur: " + e.getMessage());
         }
+}
     }
+}
     
     /**
      * Gère la modification d'un fournisseur
@@ -1236,6 +1271,7 @@ public class AdminPanelController implements Initializable {
                         "Veuillez sélectionner un fournisseur à modifier.");
                 return;
             }
+}
             
             // Créer un dialogue pour modifier les informations du fournisseur
             Dialog<Fournisseur> dialog = new Dialog<>();
@@ -1284,14 +1320,17 @@ public class AdminPanelController implements Initializable {
                         if (nomField.getText().isEmpty()) {
                             throw new IllegalArgumentException("Le nom du fournisseur est obligatoire");
                         }
+}
                         
                         if (telephoneField.getText().isEmpty()) {
                             throw new IllegalArgumentException("Le téléphone est obligatoire");
                         }
+}
                         
                         if (emailField.getText().isEmpty()) {
                             throw new IllegalArgumentException("L'email est obligatoire");
                         }
+}
                         
                         // Mettre à jour le fournisseur
                         selectedSupplier.setNom(nomField.getText());
@@ -1305,7 +1344,9 @@ public class AdminPanelController implements Initializable {
                         AlertUtils.showErrorAlert("Erreur", "Champs obligatoires", e.getMessage());
                         return null;
                     }
+}
                 }
+}
                 return null;
             });
             
@@ -1331,11 +1372,13 @@ public class AdminPanelController implements Initializable {
                         AlertUtils.showErrorAlert("Erreur", "Erreur lors de la modification du fournisseur", 
                                 "Impossible de modifier le fournisseur. Veuillez réessayer.");
                     }
+}
                 } catch (Exception e) {
                     e.printStackTrace();
                     AlertUtils.showErrorAlert("Erreur", "Erreur lors de la modification du fournisseur", 
                             "Impossible de modifier le fournisseur: " + e.getMessage());
                 }
+}
             });
             
         } catch (Exception e) {
@@ -1343,289 +1386,6 @@ public class AdminPanelController implements Initializable {
             AlertUtils.showErrorAlert("Erreur", "Erreur lors de la modification du fournisseur", 
                     "Impossible de modifier le fournisseur: " + e.getMessage());
         }
-    }
-    
-    /**
-     * Gère la création d'une nouvelle commande
-     */
-    @FXML
-    protected void handleNewOrder() {
-        try {
-            // TODO: Implémenter la création de commande
-            AlertUtils.showInfoAlert("Information", "Fonctionnalité en développement", 
-                    "La création de commandes sera disponible dans une future mise à jour.");
-            
-            // Enregistrer l'activité
-            activiteService.ajouterActivite("Commande", "Tentative de création d'une nouvelle commande", 
-                    currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
-        } catch (Exception e) {
-            e.printStackTrace();
-            AlertUtils.showErrorAlert("Erreur", "Erreur lors de la création de commande", 
-                    "Impossible de créer une nouvelle commande: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Gère la modification d'une commande existante
-     */
-    @FXML
-    protected void handleEditOrder() {
-        try {
-            // TODO: Implémenter la modification de commande
-            AlertUtils.showInfoAlert("Information", "Fonctionnalité en développement", 
-                    "La modification de commandes sera disponible dans une future mise à jour.");
-            
-            // Enregistrer l'activité
-            activiteService.ajouterActivite("Commande", "Tentative de modification d'une commande", 
-                    currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
-        } catch (Exception e) {
-            e.printStackTrace();
-            AlertUtils.showErrorAlert("Erreur", "Erreur lors de la modification de commande", 
-                    "Impossible de modifier la commande: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Gère l'annulation d'une commande
-     */
-    @FXML
-    protected void handleCancelOrder() {
-        try {
-            // TODO: Implémenter l'annulation de commande
-            AlertUtils.showInfoAlert("Information", "Fonctionnalité en développement", 
-                    "L'annulation de commandes sera disponible dans une future mise à jour.");
-            
-            // Enregistrer l'activité
-            activiteService.ajouterActivite("Commande", "Tentative d'annulation d'une commande", 
-                    currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
-        } catch (Exception e) {
-            e.printStackTrace();
-            AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'annulation de commande", 
-                    "Impossible d'annuler la commande: " + e.getMessage());
-        }
-    }
-    
-    /**
- * Gère l'entrée de stock pour un produit
- */
-@FXML
-protected void handleStockEntry() {
-    try {
-        // Vérifier qu'un produit est sélectionné
-        Produit selectedProduct = productsTable.getSelectionModel().getSelectedItem();
-        if (selectedProduct == null) {
-            AlertUtils.showWarningAlert("Attention", "Aucun produit sélectionné", 
-                    "Veuillez sélectionner un produit pour ajouter du stock.");
-            return;
-        }
-        
-        // Afficher une boîte de dialogue pour entrer la quantité
-        TextInputDialog dialog = new TextInputDialog("1");
-        dialog.setTitle("Entrée de stock");
-        dialog.setHeaderText("Ajout au stock pour: " + selectedProduct.getNom());
-        dialog.setContentText("Quantité à ajouter:");
-        
-        Optional<String> result = dialog.showAndWait();
-        
-        if (result.isPresent()) {
-            try {
-                int quantite = Integer.parseInt(result.get());
-                
-                if (quantite <= 0) {
-                    AlertUtils.showWarningAlert("Attention", "Quantité invalide", 
-                            "Veuillez entrer une quantité positive.");
-                    return;
-                }
-                
-                // Ajouter la quantité au stock
-                boolean success = stockService.ajouterStock(selectedProduct.getId(), quantite, pharmacieId);
-                
-                if (success) {
-                    // Enregistrer l'activité
-                    activiteService.ajouterActivite("Stock", "Entrée de stock: " + quantite + " unités de " + selectedProduct.getNom(), 
-                            currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
-                    
-                    // Recharger les données
-                    loadProductsData();
-                    loadStockData();
-                    loadDashboardData();
-                    
-                    AlertUtils.showInfoAlert("Succès", "Stock mis à jour", 
-                            "Le stock a été mis à jour avec succès.");
-                }
-                
-            } catch (NumberFormatException e) {
-                AlertUtils.showWarningAlert("Attention", "Quantité invalide", 
-                        "Veuillez entrer un nombre entier valide.");
-            }
-        }
-        
-    } catch (Exception e) {
-        e.printStackTrace();
-        AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'entrée de stock", 
-                "Impossible d'effectuer l'entrée de stock: " + e.getMessage());
-    }
 }
-
-/**
- * Gère la sortie de stock pour un produit
- */
-@FXML
-protected void handleStockExit() {
-    try {
-        // Vérifier qu'un produit est sélectionné
-        Produit selectedProduct = productsTable.getSelectionModel().getSelectedItem();
-        if (selectedProduct == null) {
-            AlertUtils.showWarningAlert("Attention", "Aucun produit sélectionné", 
-                    "Veuillez sélectionner un produit pour retirer du stock.");
-            return;
-        }
-        
-        // Vérifier le stock disponible
-        Stock stock = stockService.getStockByProduitAndPharmacie(selectedProduct.getId(), pharmacieId);
-        if (stock == null || stock.getQuantite() <= 0) {
-            AlertUtils.showWarningAlert("Attention", "Stock insuffisant", 
-                    "Ce produit n'a pas de stock disponible.");
-            return;
-        }
-        
-        // Afficher une boîte de dialogue pour entrer la quantité à retirer
-        TextInputDialog dialog = new TextInputDialog("1");
-        dialog.setTitle("Sortie de stock");
-        dialog.setHeaderText("Retrait du stock pour: " + selectedProduct.getNom() + "\nStock actuel: " + stock.getQuantite());
-        dialog.setContentText("Quantité à retirer:");
-        
-        Optional<String> result = dialog.showAndWait();
-        
-        if (result.isPresent()) {
-            try {
-                int quantite = Integer.parseInt(result.get());
-                
-                if (quantite <= 0) {
-                    AlertUtils.showWarningAlert("Attention", "Quantité invalide", 
-                            "Veuillez entrer une quantité positive.");
-                    return;
-                }
-                
-                if (quantite > stock.getQuantite()) {
-                    AlertUtils.showWarningAlert("Attention", "Quantité excessive", 
-                            "La quantité à retirer ne peut pas être supérieure au stock disponible (" + stock.getQuantite() + ").");
-                    return;
-                }
-                
-                // Afficher une boîte de dialogue pour entrer la raison
-                TextInputDialog reasonDialog = new TextInputDialog("Vente");
-                reasonDialog.setTitle("Raison du retrait");
-                reasonDialog.setHeaderText("Veuillez indiquer la raison de ce retrait");
-                reasonDialog.setContentText("Raison:");
-                
-                Optional<String> reasonResult = reasonDialog.showAndWait();
-                String raison = reasonResult.orElse("Non spécifiée");
-                
-                // Retirer la quantité du stock
-                boolean success = stockService.retirerStock(selectedProduct.getId(), quantite, raison, pharmacieId);
-                
-                if (success) {
-                    // Enregistrer l'activité
-                    activiteService.ajouterActivite("Stock", "Sortie de stock: " + quantite + " unités de " + selectedProduct.getNom() + " (Raison: " + raison + ")", 
-                            currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
-                    
-                    // Recharger les données
-                    loadProductsData();
-                    loadStockData();
-                    loadDashboardData();
-                    
-                    AlertUtils.showInfoAlert("Succès", "Stock mis à jour", 
-                            "Le stock a été mis à jour avec succès.");
-                }
-                
-            } catch (NumberFormatException e) {
-                AlertUtils.showWarningAlert("Attention", "Quantité invalide", 
-                        "Veuillez entrer un nombre entier valide.");
-            }
-        }
-        
-    } catch (Exception e) {
-        e.printStackTrace();
-        AlertUtils.showErrorAlert("Erreur", "Erreur lors de la sortie de stock", 
-                "Impossible d'effectuer la sortie de stock: " + e.getMessage());
     }
-}
-
-/**
- * Gère l'ajustement de stock pour un produit
- */
-@FXML
-protected void handleStockAdjustment() {
-    try {
-        // Vérifier qu'un produit est sélectionné
-        Produit selectedProduct = productsTable.getSelectionModel().getSelectedItem();
-        if (selectedProduct == null) {
-            AlertUtils.showWarningAlert("Attention", "Aucun produit sélectionné", 
-                    "Veuillez sélectionner un produit pour ajuster le stock.");
-            return;
-        }
-        
-        // Récupérer le stock actuel
-        Stock stock = stockService.getStockByProduitAndPharmacie(selectedProduct.getId(), pharmacieId);
-        int stockActuel = (stock != null) ? stock.getQuantite() : 0;
-        
-        // Afficher une boîte de dialogue pour entrer la nouvelle quantité
-        TextInputDialog dialog = new TextInputDialog(String.valueOf(stockActuel));
-        dialog.setTitle("Ajustement de stock");
-        dialog.setHeaderText("Ajustement du stock pour: " + selectedProduct.getNom() + "\nStock actuel: " + stockActuel);
-        dialog.setContentText("Nouvelle quantité totale:");
-        
-        Optional<String> result = dialog.showAndWait();
-        
-        if (result.isPresent()) {
-            try {
-                int nouvelleQuantite = Integer.parseInt(result.get());
-                
-                if (nouvelleQuantite < 0) {
-                    AlertUtils.showWarningAlert("Attention", "Quantité invalide", 
-                            "La quantité ne peut pas être négative.");
-                    return;
-                }
-                
-                // Afficher une boîte de dialogue pour entrer la raison
-                TextInputDialog reasonDialog = new TextInputDialog("Inventaire");
-                reasonDialog.setTitle("Raison de l'ajustement");
-                reasonDialog.setHeaderText("Veuillez indiquer la raison de cet ajustement");
-                reasonDialog.setContentText("Raison:");
-                
-                Optional<String> reasonResult = reasonDialog.showAndWait();
-                String raison = reasonResult.orElse("Inventaire");
-                
-                // Ajuster le stock
-                boolean success = stockService.ajusterStock(selectedProduct.getId(), nouvelleQuantite, raison, pharmacieId);
-                
-                if (success) {
-                    // Enregistrer l'activité
-                    String message = "Ajustement de stock: de " + stockActuel + " à " + nouvelleQuantite + 
-                            " unités de " + selectedProduct.getNom() + " (Raison: " + raison + ")"; 
-                    activiteService.ajouterActivite("Stock", message, 
-                            currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
-                    
-                    // Recharger les données
-                    loadProductsData();
-                    loadStockData();
-                    loadDashboardData();
-                    
-                    AlertUtils.showInfoAlert("Succès", "Stock mis à jour", 
-                            "Le stock a été ajusté avec succès.");
-                }
-                
-            } catch (NumberFormatException e) {
-                AlertUtils.showWarningAlert("Attention", "Quantité invalide", 
-                        "Veuillez entrer un nombre entier valide.");
-            }
-        }
-        
-    } catch (Exception e) {
-        e.printStackTrace();
-        AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajustement de stock", 
-                "Impossible d'effectuer l'ajustement de stock: " + e.getMessage());
-    }
-}
 }

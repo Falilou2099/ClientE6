@@ -1,29 +1,33 @@
 package com.gestionpharma.models;
 
-public class Fournisseur {
+/**
+ * Classe représentant une pharmacie dans le système
+ */
+public class Pharmacie {
     private int id;
     private String nom;
     private String adresse;
     private String telephone;
     private String email;
     private String siret;
-    private int pharmacieId;
+    private String horaires;
     
-    public Fournisseur() {
-        // Constructeur par défaut
+    // Constructeur par défaut
+    public Pharmacie() {
     }
     
-    public Fournisseur(int id, String nom, String adresse, String telephone, String email, String siret, int pharmacieId) {
+    // Constructeur avec paramètres
+    public Pharmacie(int id, String nom, String adresse, String telephone, String email, String siret, String horaires) {
         this.id = id;
         this.nom = nom;
         this.adresse = adresse;
         this.telephone = telephone;
         this.email = email;
         this.siret = siret;
-        this.pharmacieId = pharmacieId;
+        this.horaires = horaires;
     }
     
-    // Getters et Setters
+    // Getters et setters
     public int getId() {
         return id;
     }
@@ -72,16 +76,17 @@ public class Fournisseur {
         this.siret = siret;
     }
     
-    public int getPharmacieId() {
-        return pharmacieId;
+    public String getHoraires() {
+        return horaires;
     }
     
-    public void setPharmacieId(int pharmacieId) {
-        this.pharmacieId = pharmacieId;
+    public void setHoraires(String horaires) {
+        this.horaires = horaires;
     }
     
     @Override
     public String toString() {
-        return nom;
+        return "Pharmacie [id=" + id + ", nom=" + nom + ", adresse=" + adresse + ", telephone=" + telephone + ", email="
+                + email + ", siret=" + siret + ", horaires=" + horaires + "]";
     }
 }

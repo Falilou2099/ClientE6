@@ -13,13 +13,14 @@ public class Produit {
     private int seuilAlerte;
     private LocalDate dateExpiration;
     private LocalDate dateAjout;
+    private int pharmacieId;
     
     public Produit() {
         // Constructeur par défaut
     }
     
     public Produit(int id, String nom, String description, double prixAchat, double prixVente, 
-                  String categorie, int quantiteStock, int seuilAlerte, LocalDate dateExpiration, LocalDate dateAjout) {
+                  String categorie, int quantiteStock, int seuilAlerte, LocalDate dateExpiration, LocalDate dateAjout, int pharmacieId) {
         this.id = id;
         this.nom = nom;
         this.description = description;
@@ -30,6 +31,7 @@ public class Produit {
         this.seuilAlerte = seuilAlerte;
         this.dateExpiration = dateExpiration;
         this.dateAjout = dateAjout;
+        this.pharmacieId = pharmacieId;
     }
     
     // Getters et Setters
@@ -111,6 +113,38 @@ public class Produit {
     
     public void setSeuilAlerte(int seuilAlerte) {
         this.seuilAlerte = seuilAlerte;
+    }
+    
+    /**
+     * Alias pour getDateAjout() pour compatibilité avec les méthodes existantes
+     * @return La date de création du produit
+     */
+    public LocalDate getDateCreation() {
+        return dateAjout;
+    }
+    
+    /**
+     * Alias pour setDateAjout() pour compatibilité avec les méthodes existantes
+     * @param dateCreation La date de création du produit
+     */
+    public void setDateCreation(LocalDate dateCreation) {
+        this.dateAjout = dateCreation;
+    }
+    
+    /**
+     * Retourne l'ID de la pharmacie associée au produit
+     * @return l'ID de la pharmacie
+     */
+    public int getPharmacieId() {
+        return pharmacieId;
+    }
+    
+    /**
+     * Définit l'ID de la pharmacie associée au produit
+     * @param pharmacieId l'ID de la pharmacie
+     */
+    public void setPharmacieId(int pharmacieId) {
+        this.pharmacieId = pharmacieId;
     }
     
     @Override

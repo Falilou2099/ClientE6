@@ -80,6 +80,14 @@ public class Stock {
         this.seuilMinimum = seuilMinimum;
     }
     
+    /**
+     * Alias pour getSeuilMinimum() pour compatibilité avec les méthodes existantes
+     * @return La quantité minimum du stock
+     */
+    public int getQuantiteMinimum() {
+        return seuilMinimum;
+    }
+    
     public String getStatut() {
         return statut;
     }

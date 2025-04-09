@@ -91,17 +91,17 @@ public class ProduitService {
                                 activityStmt.executeUpdate();
                             }
                         } catch (SQLException e) {
+                            // Ignorer les erreurs d'activité, ce n'est pas critique
                             System.out.println("Erreur lors de l'ajout de l'activité: " + e.getMessage());
-                            // Ne pas bloquer l'opération si l'ajout d'activité échoue
                         }
                         
                         return true;
                     }
                 }
             } catch (SQLException e) {
-                System.out.println("Erreur d'ajout de produit: " + e.getMessage());
                 AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
                         "Impossible d'ajouter le produit : " + e.getMessage());
+                return false;
             }
         } catch (SQLException e) {
             System.out.println("Erreur de connexion à la base de données: " + e.getMessage());
@@ -122,34 +122,19 @@ public class ProduitService {
         ResultSet columns = metaData.getColumns(null, null, "produits", "date_expiration");
         
         if (!columns.next()) {
-            System.out.println("La colonne 'date_expiration' n'existe pas dans la table produits. Ajout en cours...");
+            // La colonne n'existe pas, on l'ajoute
             try (Statement stmt = conn.createStatement()) {
-                stmt.execute("ALTER TABLE produits ADD COLUMN date_expiration DATE NULL");
-                System.out.println("Colonne 'date_expiration' ajoutée avec succès.");
+                stmt.execute("ALTER TABLE produits ADD COLUMN date_expiration DATE");
+                System.out.println("Colonne date_expiration ajoutée à la table produits");
+            } catch (SQLException e) {
+                // Si l'erreur est due à une colonne déjà existante, on ignore
+                if (!e.getMessage().contains("Duplicate column")) {
+                    throw e;
+                }
             }
         }
+        
         columns.close();
-        
-        // Vérifier aussi les autres colonnes importantes
-        ResultSet prixAchatCol = metaData.getColumns(null, null, "produits", "prix_achat");
-        if (!prixAchatCol.next()) {
-            System.out.println("La colonne 'prix_achat' n'existe pas dans la table produits. Ajout en cours...");
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute("ALTER TABLE produits ADD COLUMN prix_achat DECIMAL(10, 2) NOT NULL DEFAULT 0");
-                System.out.println("Colonne 'prix_achat' ajoutée avec succès.");
-            }
-        }
-        prixAchatCol.close();
-        
-        ResultSet seuilCol = metaData.getColumns(null, null, "produits", "seuil_alerte");
-        if (!seuilCol.next()) {
-            System.out.println("La colonne 'seuil_alerte' n'existe pas dans la table produits. Ajout en cours...");
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute("ALTER TABLE produits ADD COLUMN seuil_alerte INT NOT NULL DEFAULT 10");
-                System.out.println("Colonne 'seuil_alerte' ajoutée avec succès.");
-            }
-        }
-        seuilCol.close();
     }
     
     /**
@@ -158,48 +143,38 @@ public class ProduitService {
      * @param produit Produit à synchroniser
      * @param pharmacieId ID de la pharmacie
      */
-    private void synchroniserStock(Connection conn, Produit produit, int pharmacieId) throws SQLException {
-        // Vérifier si la table stocks existe
-        DatabaseMetaData metaData = conn.getMetaData();
-        ResultSet tables = metaData.getTables(null, null, "stocks", null);
-        
-        if (!tables.next()) {
-            // Créer la table stocks si elle n'existe pas
-            try (Statement stmt = conn.createStatement()) {
-                String createTableSQL = "CREATE TABLE stocks (" +
-                                       "id INT AUTO_INCREMENT PRIMARY KEY, " +
-                                       "produit_id INT NOT NULL, " +
-                                       "pharmacie_id INT NOT NULL, " +
-                                       "quantite INT NOT NULL DEFAULT 0, " +
-                                       "seuil_minimum INT NOT NULL DEFAULT 10, " +
-                                       "date_expiration DATE NULL, " +
-                                       "dernier_mouvement TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-                                       "FOREIGN KEY (produit_id) REFERENCES produits(id), " +
-                                       "FOREIGN KEY (pharmacie_id) REFERENCES pharmacies(id)" +
-                                       ")";
-                stmt.execute(createTableSQL);
-                System.out.println("Table 'stocks' créée avec succès.");
+    private void synchroniserStock(Connection conn, Produit produit, int pharmacieId) {
+        try {
+            // Vérifier si une entrée existe déjà dans la table stocks
+            String checkQuery = "SELECT id FROM stocks WHERE produit_id = ? AND pharmacie_id = ?";
+            try (PreparedStatement checkStmt = conn.prepareStatement(checkQuery)) {
+                checkStmt.setInt(1, produit.getId());
+                checkStmt.setInt(2, pharmacieId);
+                ResultSet rs = checkStmt.executeQuery();
+                
+                if (rs.next()) {
+                    // Mettre à jour l'entrée existante
+                    String updateQuery = "UPDATE stocks SET quantite = ? WHERE produit_id = ? AND pharmacie_id = ?";
+                    try (PreparedStatement updateStmt = conn.prepareStatement(updateQuery)) {
+                        updateStmt.setInt(1, produit.getQuantiteStock());
+                        updateStmt.setInt(2, produit.getId());
+                        updateStmt.setInt(3, pharmacieId);
+                        updateStmt.executeUpdate();
+                    }
+                } else {
+                    // Créer une nouvelle entrée
+                    String insertQuery = "INSERT INTO stocks (produit_id, pharmacie_id, quantite) VALUES (?, ?, ?)";
+                    try (PreparedStatement insertStmt = conn.prepareStatement(insertQuery)) {
+                        insertStmt.setInt(1, produit.getId());
+                        insertStmt.setInt(2, pharmacieId);
+                        insertStmt.setInt(3, produit.getQuantiteStock());
+                        insertStmt.executeUpdate();
+                    }
+                }
             }
-        }
-        tables.close();
-        
-        // Ajouter le produit dans la table stocks
-        String stockQuery = "INSERT INTO stocks (produit_id, pharmacie_id, quantite, seuil_minimum, date_expiration) " +
-                           "VALUES (?, ?, ?, ?, ?)";
-        
-        try (PreparedStatement pstmt = conn.prepareStatement(stockQuery)) {
-            pstmt.setInt(1, produit.getId());
-            pstmt.setInt(2, pharmacieId);
-            pstmt.setInt(3, produit.getQuantiteStock());
-            pstmt.setInt(4, 10); // Seuil minimum par défaut
-            pstmt.setDate(5, produit.getDateExpiration() != null ? 
-                    Date.valueOf(produit.getDateExpiration()) : null);
-            
-            pstmt.executeUpdate();
-            System.out.println("Stock créé pour le produit " + produit.getNom());
         } catch (SQLException e) {
             System.out.println("Erreur lors de la synchronisation du stock: " + e.getMessage());
-            // Ne pas bloquer l'opération si la synchronisation échoue
+            // On continue malgré l'erreur, car ce n'est pas critique
         }
     }
     
@@ -209,9 +184,8 @@ public class ProduitService {
      * @return true si la mise à jour a réussi, false sinon
      */
     public boolean modifierProduit(Produit produit) {
-        String query = "UPDATE produits SET nom = ?, description = ?, prix_achat = ?, " +
-                       "prix_vente = ?, categorie = ?, quantite_stock = ?, date_expiration = ? " +
-                       "WHERE id = ?";
+        String query = "UPDATE produits SET nom = ?, description = ?, prix_achat = ?, prix_vente = ?, " +
+                       "categorie = ?, quantite_stock = ?, date_expiration = ? WHERE id = ?";
         
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
@@ -232,9 +206,8 @@ public class ProduitService {
         } catch (SQLException e) {
             AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
                     "Impossible de modifier le produit : " + e.getMessage());
+            return false;
         }
-        
-        return false;
     }
     
     /**
@@ -243,24 +216,20 @@ public class ProduitService {
      * @return true si la suppression a réussi, false sinon
      */
     public boolean supprimerProduit(int produitId) {
-        String query = "DELETE FROM produits WHERE id = ?";
-        
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
-            pstmt.setInt(1, produitId);
-            
-            int affectedRows = pstmt.executeUpdate();
-            return affectedRows > 0;
-            
+        try (Connection conn = DatabaseConfig.getConnection()) {
+            String query = "DELETE FROM produits WHERE id = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+                pstmt.setInt(1, produitId);
+                int affectedRows = pstmt.executeUpdate();
+                return affectedRows > 0;
+            }
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
+            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données",
                     "Impossible de supprimer le produit : " + e.getMessage());
+            return false;
         }
-        
-        return false;
     }
-    
+
     /**
      * Recherche des produits par nom ou catégorie
      * @param searchTerm Terme de recherche
@@ -269,33 +238,31 @@ public class ProduitService {
      */
     public List<Produit> rechercherProduits(String searchTerm, int pharmacieId) {
         List<Produit> produits = new ArrayList<>();
-        String query = "SELECT * FROM produits WHERE pharmacie_id = ? AND " +
-                      "(nom LIKE ? OR categorie LIKE ? OR description LIKE ?)";
-        
+        String query = "SELECT * FROM produits WHERE (nom LIKE ? OR description LIKE ? OR categorie LIKE ?) AND pharmacie_id = ?";
+        String searchTermWithWildcards = "%" + searchTerm + "%";
+
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
-            String searchPattern = "%" + searchTerm + "%";
-            pstmt.setInt(1, pharmacieId);
-            pstmt.setString(2, searchPattern);
-            pstmt.setString(3, searchPattern);
-            pstmt.setString(4, searchPattern);
-            
+
+            pstmt.setString(1, searchTermWithWildcards);
+            pstmt.setString(2, searchTermWithWildcards);
+            pstmt.setString(3, searchTermWithWildcards);
+            pstmt.setInt(4, pharmacieId);
             ResultSet rs = pstmt.executeQuery();
-            
+
             while (rs.next()) {
                 Produit produit = mapResultSetToProduit(rs);
                 produits.add(produit);
             }
-            
+
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de rechercher les produits : " + e.getMessage());
+            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données",
+                    "Erreur lors de la recherche des produits : " + e.getMessage());
         }
-        
+
         return produits;
     }
-    
+
     /**
      * Récupère un produit par son ID
      * @param produitId ID du produit
@@ -303,25 +270,26 @@ public class ProduitService {
      */
     public Produit getProduitById(int produitId) {
         String query = "SELECT * FROM produits WHERE id = ?";
-        
+
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
+
             pstmt.setInt(1, produitId);
             ResultSet rs = pstmt.executeQuery();
-            
+
             if (rs.next()) {
                 return mapResultSetToProduit(rs);
+            } else {
+                return null;
             }
-            
+
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer le produit : " + e.getMessage());
+            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données",
+                    "Erreur lors de la récupération du produit : " + e.getMessage());
+            return null;
         }
-        
-        return null;
     }
-    
+
     /**
      * Récupère les produits dont le stock est inférieur au seuil minimum
      * @param pharmacieId ID de la pharmacie
@@ -329,28 +297,27 @@ public class ProduitService {
      */
     public List<Produit> getProduitsEnAlerte(int pharmacieId) {
         List<Produit> produits = new ArrayList<>();
-        String query = "SELECT p.* FROM produits p JOIN stocks s ON p.id = s.produit_id " +
-                       "WHERE p.pharmacie_id = ? AND s.quantite <= s.seuil_minimum";
-        
+        String query = "SELECT * FROM produits WHERE quantite_stock <= seuil_alerte AND pharmacie_id = ?";
+
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
+
             pstmt.setInt(1, pharmacieId);
             ResultSet rs = pstmt.executeQuery();
-            
+
             while (rs.next()) {
                 Produit produit = mapResultSetToProduit(rs);
                 produits.add(produit);
             }
-            
+
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer les produits en alerte : " + e.getMessage());
+            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données",
+                    "Erreur lors de la récupération des produits en alerte : " + e.getMessage());
         }
-        
+
         return produits;
     }
-    
+
     /**
      * Récupère les produits qui vont bientôt expirer
      * @param pharmacieId ID de la pharmacie
@@ -359,26 +326,25 @@ public class ProduitService {
      */
     public List<Produit> getProduitsEnExpiration(int pharmacieId, int joursAvantExpiration) {
         List<Produit> produits = new ArrayList<>();
-        String query = "SELECT * FROM produits WHERE pharmacie_id = ? AND date_expiration IS NOT NULL " +
-                       "AND date_expiration <= DATE_ADD(CURDATE(), INTERVAL ? DAY)";
-        
+        String query = "SELECT * FROM produits WHERE date_expiration <= DATE_ADD(CURDATE(), INTERVAL ? DAY) AND pharmacie_id = ?";
+
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
+
             pstmt.setInt(1, pharmacieId);
             pstmt.setInt(2, joursAvantExpiration);
             ResultSet rs = pstmt.executeQuery();
-            
+
             while (rs.next()) {
                 Produit produit = mapResultSetToProduit(rs);
                 produits.add(produit);
             }
-            
+
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
+            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données",
                     "Impossible de récupérer les produits en expiration : " + e.getMessage());
         }
-        
+
         return produits;
     }
     
@@ -413,5 +379,62 @@ public class ProduitService {
      */
     public List<Produit> getProduitsByPharmacie(int pharmacieId) {
         return getAllProduits(pharmacieId);
+    }
+    
+    /**
+     * Ajoute un nouveau produit (alias pour ajouterProduit)
+     * @param produit Produit à ajouter
+     * @return true si l'ajout a réussi, false sinon
+     */
+    public boolean addProduit(Produit produit) {
+        return ajouterProduit(produit, produit.getPharmacieId());
+    }
+    
+    /**
+     * Met à jour un produit existant (alias pour modifierProduit)
+     * @param produit Produit à mettre à jour
+     * @return true si la mise à jour a réussi, false sinon
+     */
+    public boolean updateProduit(Produit produit) {
+        return modifierProduit(produit);
+    }
+    
+    /**
+     * Supprime un produit (alias pour supprimerProduit)
+     * @param produitId ID du produit à supprimer
+     * @return true si la suppression a réussi, false sinon
+     */
+    public boolean deleteProduit(int produitId) {
+        return supprimerProduit(produitId);
+    }
+    
+    /**
+     * Récupère toutes les catégories de produits disponibles pour une pharmacie
+     * @param pharmacieId ID de la pharmacie
+     * @return Liste des catégories de produits
+     */
+    public List<String> getAllCategories(int pharmacieId) {
+        List<String> categories = new ArrayList<>();
+        String query = "SELECT DISTINCT categorie FROM produits WHERE pharmacie_id = ? ORDER BY categorie";
+        
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            pstmt.setInt(1, pharmacieId);
+            ResultSet rs = pstmt.executeQuery();
+            
+            while (rs.next()) {
+                String categorie = rs.getString("categorie");
+                if (categorie != null && !categorie.isEmpty()) {
+                    categories.add(categorie);
+                }
+            }
+            
+        } catch (SQLException e) {
+            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
+                    "Impossible de récupérer les catégories : " + e.getMessage());
+        }
+        
+        return categories;
     }
 }

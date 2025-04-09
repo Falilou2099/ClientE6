@@ -9,11 +9,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * Service pour gérer les opérations liées aux stocks
  */
 public class StockService {
+    // Logger pour tracer les opérations
+    private static final Logger logger = Logger.getLogger(StockService.class.getName());
     
     /**
      * Récupère tous les stocks d'une pharmacie
@@ -377,23 +380,93 @@ public class StockService {
      * @return true si l'ajustement a réussi, false sinon
      */
     public boolean ajusterStock(int produitId, int nouvelleQuantite, String raison, int pharmacieId) {
-        // Récupérer le stock existant
-        Stock stock = getStockByProduitAndPharmacie(produitId, pharmacieId);
-        
-        if (stock != null) {
-            // Mettre à jour la quantité directement
-            return updateQuantiteStock(stock.getId(), nouvelleQuantite);
-        } else {
-            // Créer un nouveau stock si aucun n'existe
-            Stock nouveauStock = new Stock();
-            nouveauStock.setProduitId(produitId);
-            nouveauStock.setPharmacieId(pharmacieId);
-            nouveauStock.setQuantite(nouvelleQuantite);
-            nouveauStock.setSeuilMinimum(5); // Valeur par défaut
-            nouveauStock.setStatut("Normal");
-            nouveauStock.setDernierMouvement(LocalDateTime.now());
+        if (nouvelleQuantite < 0) {
+            logger.warning("La quantité ne peut pas être négative");
+            return false;
+        }
+
+        try (Connection conn = DatabaseConfig.getConnection()) {
+            conn.setAutoCommit(false); // Démarrer une transaction
+
+            try {
+                // Vérifier si le stock existe 
+                String checkQuery = "SELECT id, quantite FROM stocks WHERE produit_id = ? AND pharmacie_id = ?";
+                int stockId = -1;
+                int quantiteActuelle = 0;
+                boolean stockExiste = false;
+
+                try (PreparedStatement checkStmt = conn.prepareStatement(checkQuery)) {
+                    checkStmt.setInt(1, produitId);
+                    checkStmt.setInt(2, pharmacieId);
+
+                    try (ResultSet rs = checkStmt.executeQuery()) {
+                        if (rs.next()) {
+                            stockId = rs.getInt("id");
+                            quantiteActuelle = rs.getInt("quantite");
+                            stockExiste = true;
+                        }
+                    }
+                }
+
+                // Calculer la différence pour le mouvement de stock
+                int difference = nouvelleQuantite - quantiteActuelle;
+                String typeMouvement = "ajustement";
+
+                if (stockExiste) {
+                    // Mise à jour du stock existant
+                    String updateQuery = "UPDATE stocks SET quantite = ?, dernier_mouvement = NOW() WHERE id = ?";
+                    try (PreparedStatement updateStmt = conn.prepareStatement(updateQuery)) {
+                        updateStmt.setInt(1, nouvelleQuantite);
+                        updateStmt.setInt(2, stockId);
+                        updateStmt.executeUpdate();
+                    }
+                } else {
+                    // Création d'un nouveau stock si n'existe pas
+                    String insertQuery = "INSERT INTO stocks (produit_id, pharmacie_id, quantite, seuil_minimum, dernier_mouvement) " +
+                            "SELECT id, ?, ?, stock_minimum, NOW() FROM produits WHERE id = ?";
+                    try (PreparedStatement insertStmt = conn.prepareStatement(insertQuery)) {
+                        insertStmt.setInt(1, pharmacieId);
+                        insertStmt.setInt(2, nouvelleQuantite);
+                        insertStmt.setInt(3, produitId);
+                        insertStmt.executeUpdate();
+                    }
+                }
+
+                // Mise à jour du produit
+                String updateProduitQuery = "UPDATE produits SET quantite_stock = ? WHERE id = ?";
+                try (PreparedStatement updateProduitStmt = conn.prepareStatement(updateProduitQuery)) {
+                    updateProduitStmt.setInt(1, nouvelleQuantite);
+                    updateProduitStmt.setInt(2, produitId);
+                    updateProduitStmt.executeUpdate();
+                }
+
+                // Enregistrement du mouvement
+                String mouvementQuery = "INSERT INTO mouvements_stock (produit_id, type_mouvement, quantite, commentaire) VALUES (?, ?, ABS(?), ?)";
+                try (PreparedStatement mouvementStmt = conn.prepareStatement(mouvementQuery)) {
+                    mouvementStmt.setInt(1, produitId);
+                    mouvementStmt.setString(2, typeMouvement);
+                    mouvementStmt.setInt(3, difference); // On utilise la valeur absolue pour la quantité
+                    mouvementStmt.setString(4, raison + " (Ajustement de " + quantiteActuelle + " à " + nouvelleQuantite + ")");
+                    mouvementStmt.executeUpdate();
+                }
+                
+                conn.commit(); // Valider toutes les opérations
+                logger.info("Stock ajusté avec succès: produit " + produitId + " - nouvelle quantité: " + nouvelleQuantite);
+                return true;
+                
+            } catch (SQLException e) {
+                conn.rollback(); // Annuler toutes les opérations en cas d'erreur
+                logger.severe("Erreur lors de l'ajustement de stock: " + e.getMessage());
+                e.printStackTrace();
+                return false;
+            } finally {
+                conn.setAutoCommit(true); // Rétablir l'auto-commit
+            }
             
-            return ajouterStock(nouveauStock);
+        } catch (SQLException e) {
+            logger.severe("Erreur de connexion lors de l'ajustement de stock: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
     }
     
