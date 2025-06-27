@@ -1,0 +1,283 @@
+    /**
+     * Récupère les ventes avec pagination, recherche, filtrage et tri
+     */
+    private function getSales($search = '', $page = 1, $perPage = 10, $pharmacieId = null, $dateDebut = '', $dateFin = '', $produitId = 0, $clientId = 0, $sort = 'date_desc') {
+        // Calculer l'offset pour la pagination
+        $offset = ($page - 1) * $perPage;
+        
+        // Connexion à la base de données
+        $pdo = $this->initPDO();
+        
+        try {
+            // Vérifier si la table commandes existe
+            $stmt = $pdo->query("SHOW TABLES LIKE 'commandes'");
+            $tableExists = $stmt->rowCount() > 0;
+            
+            if (!$tableExists) {
+                // La table n'existe pas, retourner un tableau vide
+                error_log("La table 'commandes' n'existe pas dans la base de données.");
+                return [];
+            }
+            
+            // Vérifier les colonnes de la table commandes
+            $stmt = $pdo->query("DESCRIBE commandes");
+            $columns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            
+            // Construire la requête SQL en fonction des colonnes disponibles
+            $query = "SELECT c.id AS commande_id, c.date_commande, c.montant_total";
+            
+            // Vérifier si les colonnes optionnelles existent
+            if (in_array('mode_paiement', $columns)) {
+                $query .= ", c.mode_paiement";
+            } else {
+                $query .= ", 'Non spécifié' AS mode_paiement";
+            }
+            
+            if (in_array('reduction', $columns)) {
+                $query .= ", c.reduction";
+            } else {
+                $query .= ", 0 AS reduction";
+            }
+            
+            $query .= ",
+                        cl.id AS client_id, cl.nom, cl.prenom";
+            
+            // Vérifier si les colonnes email et telephone existent dans la table clients
+            $stmt = $pdo->query("DESCRIBE clients");
+            $clientColumns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            
+            if (in_array('email', $clientColumns)) {
+                $query .= ", cl.email";
+            } else {
+                $query .= ", NULL AS email";
+            }
+            
+            if (in_array('telephone', $clientColumns)) {
+                $query .= ", cl.telephone";
+            } else {
+                $query .= ", NULL AS telephone";
+            }
+            
+            $query .= ",
+                        COUNT(lc.id) AS nombre_produits";
+            
+            // Vérifier si la table users existe et si elle a une colonne nom
+            $stmt = $pdo->query("SHOW TABLES LIKE 'users'");
+            $usersTableExists = $stmt->rowCount() > 0;
+            
+            if ($usersTableExists) {
+                $stmt = $pdo->query("DESCRIBE users");
+                $userColumns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+                
+                if (in_array('nom', $userColumns) && in_array('user_id', $columns)) {
+                    $query .= ",
+                        u.nom AS vendeur_nom";
+                } else {
+                    $query .= ",
+                        NULL AS vendeur_nom";
+                }
+            } else {
+                $query .= ",
+                        NULL AS vendeur_nom";
+            }
+            
+            $query .= "
+                 FROM commandes c
+                 LEFT JOIN clients cl ON c.client_id = cl.id
+                 LEFT JOIN lignes_commande lc ON c.id = lc.commande_id";
+            
+            if ($usersTableExists && in_array('user_id', $columns) && in_array('nom', $userColumns)) {
+                $query .= "
+                 LEFT JOIN users u ON c.user_id = u.id";
+            }
+            
+            $query .= "
+                 LEFT JOIN produits p ON lc.produit_id = p.id";
+            
+            $params = [];
+            $whereConditions = [];
+            
+            // Ajouter la condition de recherche si nécessaire
+            if (!empty($search)) {
+                $whereConditions[] = "(cl.nom LIKE :search OR cl.prenom LIKE :search OR p.nom LIKE :search)";
+                $params[':search'] = '%' . $search . '%';
+            }
+            
+            // Ajouter la condition de pharmacie si nécessaire
+            if ($pharmacieId && in_array('pharmacie_id', $columns)) {
+                $whereConditions[] = "c.pharmacie_id = :pharmacie_id";
+                $params[':pharmacie_id'] = $pharmacieId;
+            }
+            
+            // Ajouter le filtre de date de début si spécifié
+            if (!empty($dateDebut)) {
+                $whereConditions[] = "DATE(c.date_commande) >= :date_debut";
+                $params[':date_debut'] = $dateDebut;
+            }
+            
+            // Ajouter le filtre de date de fin si spécifié
+            if (!empty($dateFin)) {
+                $whereConditions[] = "DATE(c.date_commande) <= :date_fin";
+                $params[':date_fin'] = $dateFin;
+            }
+            
+            // Ajouter le filtre de produit si spécifié
+            if ($produitId > 0) {
+                $whereConditions[] = "lc.produit_id = :produit_id";
+                $params[':produit_id'] = $produitId;
+            }
+            
+            // Ajouter le filtre de client si spécifié
+            if ($clientId > 0) {
+                $whereConditions[] = "c.client_id = :client_id";
+                $params[':client_id'] = $clientId;
+            }
+            
+            // Ajouter les conditions WHERE si nécessaire
+            if (!empty($whereConditions)) {
+                $query .= " WHERE " . implode(" AND ", $whereConditions);
+            }
+            
+            // Grouper par commande
+            $query .= " GROUP BY c.id";
+            
+            // Déterminer l'ordre de tri
+            switch ($sort) {
+                case 'date_asc':
+                    $query .= " ORDER BY c.date_commande ASC";
+                    break;
+                case 'montant_desc':
+                    $query .= " ORDER BY c.montant_total DESC";
+                    break;
+                case 'montant_asc':
+                    $query .= " ORDER BY c.montant_total ASC";
+                    break;
+                case 'date_desc':
+                default:
+                    $query .= " ORDER BY c.date_commande DESC";
+                    break;
+            }
+            
+            // Ajouter la pagination
+            $query .= " LIMIT :offset, :perPage";
+            $params[':offset'] = $offset;
+            $params[':perPage'] = $perPage;
+            
+            // Exécuter la requête
+            $stmt = $pdo->prepare($query);
+            
+            // Binder les paramètres
+            foreach ($params as $key => $value) {
+                if ($key == ':offset' || $key == ':perPage' || $key == ':produit_id' || $key == ':client_id') {
+                    $stmt->bindValue($key, $value, \PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($key, $value);
+                }
+            }
+            
+            $stmt->execute();
+            
+            // Retourner les résultats
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors de la récupération des ventes: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Récupère le nombre total de ventes avec filtres
+     */
+    private function getTotalSalesCount($search = '', $pharmacieId = null, $dateDebut = '', $dateFin = '', $produitId = 0, $clientId = 0) {
+        // Connexion à la base de données
+        $pdo = $this->initPDO();
+        
+        try {
+            // Vérifier si la table commandes existe
+            $stmt = $pdo->query("SHOW TABLES LIKE 'commandes'");
+            $tableExists = $stmt->rowCount() > 0;
+            
+            if (!$tableExists) {
+                // La table n'existe pas, retourner 0
+                error_log("La table 'commandes' n'existe pas dans la base de données.");
+                return 0;
+            }
+            
+            // Vérifier les colonnes de la table commandes
+            $stmt = $pdo->query("DESCRIBE commandes");
+            $columns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            
+            // Construire la requête SQL
+            $query = "SELECT COUNT(DISTINCT c.id) AS total
+                     FROM commandes c
+                     LEFT JOIN clients cl ON c.client_id = cl.id
+                     LEFT JOIN lignes_commande lc ON c.id = lc.commande_id
+                     LEFT JOIN produits p ON lc.produit_id = p.id";
+            
+            $params = [];
+            $whereConditions = [];
+            
+            // Ajouter la condition de recherche si nécessaire
+            if (!empty($search)) {
+                $whereConditions[] = "(cl.nom LIKE :search OR cl.prenom LIKE :search OR p.nom LIKE :search)";
+                $params[':search'] = '%' . $search . '%';
+            }
+            
+            // Ajouter la condition de pharmacie si nécessaire
+            if ($pharmacieId && in_array('pharmacie_id', $columns)) {
+                $whereConditions[] = "c.pharmacie_id = :pharmacie_id";
+                $params[':pharmacie_id'] = $pharmacieId;
+            }
+            
+            // Ajouter le filtre de date de début si spécifié
+            if (!empty($dateDebut)) {
+                $whereConditions[] = "DATE(c.date_commande) >= :date_debut";
+                $params[':date_debut'] = $dateDebut;
+            }
+            
+            // Ajouter le filtre de date de fin si spécifié
+            if (!empty($dateFin)) {
+                $whereConditions[] = "DATE(c.date_commande) <= :date_fin";
+                $params[':date_fin'] = $dateFin;
+            }
+            
+            // Ajouter le filtre de produit si spécifié
+            if ($produitId > 0) {
+                $whereConditions[] = "lc.produit_id = :produit_id";
+                $params[':produit_id'] = $produitId;
+            }
+            
+            // Ajouter le filtre de client si spécifié
+            if ($clientId > 0) {
+                $whereConditions[] = "c.client_id = :client_id";
+                $params[':client_id'] = $clientId;
+            }
+            
+            // Ajouter les conditions WHERE si nécessaire
+            if (!empty($whereConditions)) {
+                $query .= " WHERE " . implode(" AND ", $whereConditions);
+            }
+            
+            // Exécuter la requête
+            $stmt = $pdo->prepare($query);
+            
+            // Binder les paramètres
+            foreach ($params as $key => $value) {
+                if ($key == ':produit_id' || $key == ':client_id') {
+                    $stmt->bindValue($key, $value, \PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($key, $value);
+                }
+            }
+            
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            return $result['total'] ?? 0;
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors du comptage des ventes: ' . $e->getMessage());
+            return 0;
+        }
+    }

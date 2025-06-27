@@ -1,9 +1,9 @@
 package com.gestionpharma.services;
 
-import com.gestionpharma.config.DatabaseConfig;
+import com.gestionpharma.config.DatabaseConfigSimple;
 import com.gestionpharma.models.Fournisseur;
-import com.gestionpharma.utils.AlertUtils;
 
+import javax.swing.JOptionPane;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -26,7 +26,7 @@ public class FournisseurService {
         List<Fournisseur> fournisseurs = new ArrayList<>();
         String query = "SELECT * FROM fournisseurs WHERE pharmacie_id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, pharmacieId);
@@ -45,8 +45,7 @@ public class FournisseurService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer les fournisseurs : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Impossible de récupérer les fournisseurs : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return fournisseurs;
@@ -62,7 +61,7 @@ public class FournisseurService {
         String query = "INSERT INTO fournisseurs (nom, adresse, telephone, email, siret, pharmacie_id) " +
                        "VALUES (?, ?, ?, ?, ?, ?)";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             
             pstmt.setString(1, fournisseur.getNom());
@@ -83,8 +82,7 @@ public class FournisseurService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible d'ajouter le fournisseur : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Impossible d'ajouter le fournisseur : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -99,7 +97,7 @@ public class FournisseurService {
         String query = "UPDATE fournisseurs SET nom = ?, adresse = ?, telephone = ?, email = ?, siret = ? " +
                        "WHERE id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setString(1, fournisseur.getNom());
@@ -113,8 +111,7 @@ public class FournisseurService {
             return affectedRows > 0;
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de modifier le fournisseur : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Impossible de modifier le fournisseur : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -128,7 +125,7 @@ public class FournisseurService {
     public boolean supprimerFournisseur(int fournisseurId) {
         String query = "DELETE FROM fournisseurs WHERE id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, fournisseurId);
@@ -137,8 +134,7 @@ public class FournisseurService {
             return affectedRows > 0;
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de supprimer le fournisseur : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Impossible de supprimer le fournisseur : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -155,7 +151,7 @@ public class FournisseurService {
         String query = "SELECT * FROM fournisseurs WHERE pharmacie_id = ? AND " +
                       "(nom LIKE ? OR email LIKE ? OR siret LIKE ?)";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             String searchPattern = "%" + searchTerm + "%";
@@ -179,8 +175,7 @@ public class FournisseurService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de rechercher les fournisseurs : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Impossible de rechercher les fournisseurs : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return fournisseurs;
@@ -194,7 +189,7 @@ public class FournisseurService {
     public Fournisseur getFournisseurById(int fournisseurId) {
         String query = "SELECT * FROM fournisseurs WHERE id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, fournisseurId);
@@ -213,8 +208,7 @@ public class FournisseurService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer le fournisseur : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Impossible de récupérer le fournisseur : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return null;

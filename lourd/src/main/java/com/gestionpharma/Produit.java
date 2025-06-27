@@ -1,12 +1,16 @@
 package com.gestionpharma;
 
+import java.util.Date;
+
 public class Produit {
     private int id;
     private String nom;
     private String description;
     private double prix;
+    private double prixAchat;
     private int quantiteStock;
     private String categorie;
+    private Date dateExpiration;
 
     // Constructeurs
     public Produit() {}
@@ -17,6 +21,16 @@ public class Produit {
         this.prix = prix;
         this.quantiteStock = quantiteStock;
         this.categorie = categorie;
+    }
+    
+    public Produit(String nom, String description, double prix, double prixAchat, int quantiteStock, String categorie, Date dateExpiration) {
+        this.nom = nom;
+        this.description = description;
+        this.prix = prix;
+        this.prixAchat = prixAchat;
+        this.quantiteStock = quantiteStock;
+        this.categorie = categorie;
+        this.dateExpiration = dateExpiration;
     }
 
     // Getters et Setters
@@ -37,6 +51,12 @@ public class Produit {
 
     public String getCategorie() { return categorie; }
     public void setCategorie(String categorie) { this.categorie = categorie; }
+    
+    public double getPrixAchat() { return prixAchat; }
+    public void setPrixAchat(double prixAchat) { this.prixAchat = prixAchat; }
+    
+    public Date getDateExpiration() { return dateExpiration; }
+    public void setDateExpiration(Date dateExpiration) { this.dateExpiration = dateExpiration; }
 
     @Override
     public String toString() {
@@ -45,8 +65,10 @@ public class Produit {
                 ", nom='" + nom + '\'' +
                 ", description='" + description + '\'' +
                 ", prix=" + prix +
+                ", prixAchat=" + prixAchat +
                 ", quantiteStock=" + quantiteStock +
                 ", categorie='" + categorie + '\'' +
+                ", dateExpiration=" + dateExpiration +
                 '}';
     }
 }

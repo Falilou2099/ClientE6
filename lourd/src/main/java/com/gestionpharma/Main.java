@@ -17,12 +17,17 @@ public class Main extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/login.fxml"));
         Parent root = loader.load();
         
-        // Configuration de la scène
-        Scene scene = new Scene(root, 600, 500);
+        // Configuration de la scène avec une taille plus grande
+        Scene scene = new Scene(root, 1280, 720);
         scene.getStylesheets().add(getClass().getResource("/styles/main.css").toExternalForm());
         
         primaryStage.setScene(scene);
-        primaryStage.setResizable(false);
+        primaryStage.setResizable(true); // Permettre le redimensionnement
+        primaryStage.setMaximized(true); // Ouvrir en mode maximisé
+        
+        // Commenter la ligne suivante si vous préférez le mode plein écran complet
+        // primaryStage.setFullScreen(true);
+        
         primaryStage.show();
     }
 

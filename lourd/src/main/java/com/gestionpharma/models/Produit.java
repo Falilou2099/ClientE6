@@ -14,6 +14,7 @@ public class Produit {
     private LocalDate dateExpiration;
     private LocalDate dateAjout;
     private int pharmacieId;
+    private String imageUrl;
     
     public Produit() {
         // Constructeur par défaut
@@ -32,6 +33,7 @@ public class Produit {
         this.dateExpiration = dateExpiration;
         this.dateAjout = dateAjout;
         this.pharmacieId = pharmacieId;
+        this.imageUrl = "https://via.placeholder.com/150x150?text=Produit"; // Image par défaut
     }
     
     // Getters et Setters
@@ -145,6 +147,22 @@ public class Produit {
      */
     public void setPharmacieId(int pharmacieId) {
         this.pharmacieId = pharmacieId;
+    }
+    
+    /**
+     * Retourne l'URL de l'image du produit
+     * @return l'URL de l'image
+     */
+    public String getImageUrl() {
+        return imageUrl;
+    }
+    
+    /**
+     * Définit l'URL de l'image du produit
+     * @param imageUrl l'URL de l'image
+     */
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
     
     @Override

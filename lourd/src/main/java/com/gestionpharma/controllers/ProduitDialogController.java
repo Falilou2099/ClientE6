@@ -1,3 +1,4 @@
+
 package com.gestionpharma.controllers;
 
 import com.gestionpharma.models.Produit;
@@ -15,6 +16,9 @@ import java.util.List;
  * Contrôleur pour la boîte de dialogue d'ajout/modification de produit
  */
 public class ProduitDialogController {
+    public ProduitDialogController() {
+        System.out.println("[DEBUG] Constructeur ProduitDialogController appelé");
+    }
     
     @FXML private TextField nomField;
     @FXML private TextArea descriptionField;
@@ -32,13 +36,16 @@ public class ProduitDialogController {
      */
     @FXML
     public void initialize() {
+        System.out.println("[DEBUG] Méthode initialize appelée");
         // Configurer les catégories par défaut
         List<String> categories = Arrays.asList(
             "Analgésiques", "Anti-inflammatoires", "Antibiotiques", 
             "Antihistaminiques", "Gastro-entérologie", "Dermatologie",
             "Cardiologie", "Vitamines", "Compléments alimentaires", "Autres"
         );
+        System.out.println("[DEBUG] categorieCombo = " + categorieCombo);
         categorieCombo.setItems(FXCollections.observableArrayList(categories));
+        System.out.println("[DEBUG] Catégories injectées : " + categories);
         
         // Configurer le DatePicker pour afficher un format français
         dateExpirationPicker.setConverter(new StringConverter<LocalDate>() {
@@ -173,3 +180,4 @@ public class ProduitDialogController {
         });
     }
 }
+                

@@ -1,0 +1,287 @@
+    /**
+     * Récupère la liste des produits pour le filtre
+     */
+    private function getProductsList() {
+        // Connexion à la base de données
+        $pdo = $this->initPDO();
+        
+        try {
+            // Vérifier si les tables nécessaires existent
+            $stmt = $pdo->query("SHOW TABLES LIKE 'produits'");
+            $produitsExists = $stmt->rowCount() > 0;
+            
+            $stmt = $pdo->query("SHOW TABLES LIKE 'lignes_commande'");
+            $lignesCommandeExists = $stmt->rowCount() > 0;
+            
+            if (!$produitsExists || !$lignesCommandeExists) {
+                // Une des tables n'existe pas, retourner un tableau vide
+                error_log("Une des tables nécessaires n'existe pas dans la base de données.");
+                return [];
+            }
+            
+            // Requête pour récupérer les produits qui ont été vendus
+            $query = "SELECT DISTINCT p.id, p.nom
+                     FROM produits p
+                     JOIN lignes_commande lc ON p.id = lc.produit_id
+                     ORDER BY p.nom ASC";
+            
+            $stmt = $pdo->prepare($query);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors de la récupération des produits: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Récupère la liste des clients pour le filtre
+     */
+    private function getClientsList() {
+        // Connexion à la base de données
+        $pdo = $this->initPDO();
+        
+        try {
+            // Vérifier si la table clients existe
+            $stmt = $pdo->query("SHOW TABLES LIKE 'clients'");
+            $clientsExists = $stmt->rowCount() > 0;
+            
+            if (!$clientsExists) {
+                // La table n'existe pas, retourner un tableau vide
+                error_log("La table 'clients' n'existe pas dans la base de données.");
+                return [];
+            }
+            
+            // Requête pour récupérer les clients qui ont passé des commandes
+            $query = "SELECT DISTINCT cl.id, cl.nom, cl.prenom
+                     FROM clients cl
+                     JOIN commandes c ON cl.id = c.client_id
+                     ORDER BY cl.nom ASC, cl.prenom ASC";
+            
+            $stmt = $pdo->prepare($query);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors de la récupération des clients: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Récupère les noms des produits pour une vente spécifique
+     */
+    private function getProductNamesBySaleId($saleId) {
+        // Connexion à la base de données
+        $pdo = $this->initPDO();
+        
+        try {
+            // Vérifier si les tables nécessaires existent
+            $stmt = $pdo->query("SHOW TABLES LIKE 'lignes_commande'");
+            $lignesCommandeExists = $stmt->rowCount() > 0;
+            
+            $stmt = $pdo->query("SHOW TABLES LIKE 'produits'");
+            $produitsExists = $stmt->rowCount() > 0;
+            
+            if (!$lignesCommandeExists || !$produitsExists) {
+                // Une des tables n'existe pas, retourner un tableau vide
+                error_log("Une des tables nécessaires n'existe pas dans la base de données.");
+                return [];
+            }
+            
+            // Requête pour récupérer les noms des produits
+            $query = "SELECT p.nom
+                     FROM lignes_commande lc
+                     JOIN produits p ON lc.produit_id = p.id
+                     WHERE lc.commande_id = :commande_id";
+            
+            $stmt = $pdo->prepare($query);
+            $stmt->bindValue(':commande_id', $saleId, \PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $results = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            
+            return $results;
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors de la récupération des noms de produits: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Récupère une vente par son ID
+     */
+    private function getSaleById($id) {
+        // Connexion à la base de données
+        $pdo = $this->initPDO();
+        
+        try {
+            // Vérifier si la table commandes existe
+            $stmt = $pdo->query("SHOW TABLES LIKE 'commandes'");
+            $tableExists = $stmt->rowCount() > 0;
+            
+            if (!$tableExists) {
+                // La table n'existe pas, retourner false
+                error_log("La table 'commandes' n'existe pas dans la base de données.");
+                return false;
+            }
+            
+            // Vérifier les colonnes de la table commandes
+            $stmt = $pdo->query("DESCRIBE commandes");
+            $columns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            
+            // Construire la requête SQL en fonction des colonnes disponibles
+            $query = "SELECT c.*";
+            
+            // Vérifier si la table clients existe
+            $stmt = $pdo->query("SHOW TABLES LIKE 'clients'");
+            $clientsTableExists = $stmt->rowCount() > 0;
+            
+            if ($clientsTableExists) {
+                // Vérifier les colonnes de la table clients
+                $stmt = $pdo->query("DESCRIBE clients");
+                $clientColumns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+                
+                $query .= ", cl.nom AS client_nom, cl.prenom AS client_prenom";
+                
+                if (in_array('email', $clientColumns)) {
+                    $query .= ", cl.email AS client_email";
+                } else {
+                    $query .= ", NULL AS client_email";
+                }
+                
+                if (in_array('telephone', $clientColumns)) {
+                    $query .= ", cl.telephone AS client_telephone";
+                } else {
+                    $query .= ", NULL AS client_telephone";
+                }
+            } else {
+                $query .= ", NULL AS client_nom, NULL AS client_prenom, NULL AS client_email, NULL AS client_telephone";
+            }
+            
+            // Vérifier si la table users existe
+            $stmt = $pdo->query("SHOW TABLES LIKE 'users'");
+            $usersTableExists = $stmt->rowCount() > 0;
+            
+            if ($usersTableExists && in_array('user_id', $columns)) {
+                // Vérifier les colonnes de la table users
+                $stmt = $pdo->query("DESCRIBE users");
+                $userColumns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+                
+                if (in_array('nom', $userColumns)) {
+                    $query .= ", u.nom AS vendeur_nom";
+                } else {
+                    $query .= ", NULL AS vendeur_nom";
+                }
+            } else {
+                $query .= ", NULL AS vendeur_nom";
+            }
+            
+            $query .= "
+                     FROM commandes c";
+            
+            if ($clientsTableExists) {
+                $query .= "
+                     LEFT JOIN clients cl ON c.client_id = cl.id";
+            }
+            
+            if ($usersTableExists && in_array('user_id', $columns)) {
+                $query .= "
+                     LEFT JOIN users u ON c.user_id = u.id";
+            }
+            
+            $query .= "
+                     WHERE c.id = :id";
+            
+            $stmt = $pdo->prepare($query);
+            $stmt->bindValue(':id', $id, \PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetch(\PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors de la récupération de la vente: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Récupère les détails d'une vente (produits, etc.)
+     */
+    private function getSaleDetails($id) {
+        // Connexion à la base de données
+        $pdo = $this->initPDO();
+        
+        try {
+            // Vérifier si les tables nécessaires existent
+            $stmt = $pdo->query("SHOW TABLES LIKE 'lignes_commande'");
+            $lignesCommandeExists = $stmt->rowCount() > 0;
+            
+            $stmt = $pdo->query("SHOW TABLES LIKE 'produits'");
+            $produitsExists = $stmt->rowCount() > 0;
+            
+            if (!$lignesCommandeExists || !$produitsExists) {
+                // Une des tables n'existe pas, retourner un tableau vide
+                error_log("Une des tables nécessaires n'existe pas dans la base de données.");
+                return [];
+            }
+            
+            // Vérifier les colonnes de la table produits
+            $stmt = $pdo->query("DESCRIBE produits");
+            $produitsColumns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            
+            // Construire la requête SQL en fonction des colonnes disponibles
+            $query = "SELECT lc.id, lc.produit_id, lc.quantite, lc.prix_unitaire, 
+                            p.nom AS produit_nom";
+            
+            // Vérifier si les colonnes optionnelles existent
+            if (in_array('est_ordonnance', $produitsColumns)) {
+                $query .= ", p.est_ordonnance";
+            } else {
+                $query .= ", 0 AS est_ordonnance";
+            }
+            
+            if (in_array('image', $produitsColumns)) {
+                $query .= ", p.image";
+            } else {
+                $query .= ", '/bigpharma/public/images/products/imgDefault.jpg' AS image";
+            }
+            
+            $query .= "
+                     FROM lignes_commande lc
+                     JOIN produits p ON lc.produit_id = p.id
+                     WHERE lc.commande_id = :commande_id";
+            
+            $stmt = $pdo->prepare($query);
+            $stmt->bindValue(':commande_id', $id, \PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $results = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            
+            // Si aucun résultat n'est trouvé, vérifier si la commande existe
+            if (empty($results)) {
+                $stmt = $pdo->prepare("SELECT id FROM commandes WHERE id = :id");
+                $stmt->bindValue(':id', $id, \PDO::PARAM_INT);
+                $stmt->execute();
+                
+                if ($stmt->rowCount() > 0) {
+                    // La commande existe mais n'a pas de lignes de commande
+                    return [];
+                } else {
+                    // La commande n'existe pas
+                    error_log("La commande avec l'ID $id n'existe pas.");
+                    return false;
+                }
+            }
+            
+            return $results;
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors de la récupération des détails de la vente: ' . $e->getMessage());
+            return [];
+        }
+    }

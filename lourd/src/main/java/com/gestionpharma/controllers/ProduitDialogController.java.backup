@@ -1,0 +1,371 @@
+package com.gestionpharma.controllers;
+
+import com.gestionpharma.config.DatabaseConfig;
+import com.gestionpharma.models.Produit;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.util.StringConverter;
+
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.UnaryOperator;
+import java.util.logging.Logger;
+
+/**
+ * Contrôleur pour la boîte de dialogue d'ajout/modification de produit
+ */
+public class ProduitDialogController {
+    
+    private static final Logger LOGGER = Logger.getLogger(ProduitDialogController.class.getName());
+    
+    @FXML private TextField nomField;
+    @FXML private TextArea descriptionField;
+    @FXML private TextField prixAchatField;
+    @FXML private TextField prixVenteField;
+    @FXML private ComboBox<String> categorieField;
+    @FXML private TextField stockAField;
+    @FXML private TextField stockVField;
+    @FXML private DatePicker dateExpirationPicker;
+    
+    private Produit produit;
+    private UnaryOperator<TextFormatter.Change> doubleFilter = c -> {
+        if (c.getControlNewText().matches("-?\\d*\\.?\\d*")) {
+            return c;
+        }
+        return null;
+    };
+    
+    /**
+     * Initialise la boîte de dialogue
+     */
+    @FXML
+    private void initialize() {
+        // Configuration des champs numériques pour n'accepter que des nombres
+        stockAField.setTextFormatter(new TextFormatter<>(doubleFilter));
+        stockVField.setTextFormatter(new TextFormatter<>(doubleFilter));
+        prixAchatField.setTextFormatter(new TextFormatter<>(doubleFilter));
+        prixVenteField.setTextFormatter(new TextFormatter<>(doubleFilter));
+        
+        // Configurer le ComboBox pour qu'il soit éditable
+        categorieField.setEditable(true);
+        
+        // S'assurer que la table des catégories existe dans la base de données
+        try {
+            ensureCategoriesExist();
+        } catch (SQLException e) {
+            LOGGER.warning("Erreur lors de la vérification de la table des catégories: " + e.getMessage());
+        }
+        
+        // Charger les catégories depuis la base de données
+        List<String> categories = loadCategoriesFromDatabase();
+        
+        // Si la liste est vide (erreur de connexion ou table vide), utiliser les catégories par défaut
+        if (categories.isEmpty()) {
+            LOGGER.warning("Impossible de charger les catégories depuis la base de données. Utilisation des catégories par défaut.");
+            categories = getDefaultCategories();
+        }
+        
+        // Ajouter les catégories au ComboBox
+        categorieField.getItems().addAll(categories);
+        
+        // Configurer le DatePicker pour afficher un format français
+        dateExpirationPicker.setConverter(new StringConverter<LocalDate>() {
+            private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            
+            @Override
+            public String toString(LocalDate date) {
+                if (date != null) {
+                    return dateFormatter.format(date);
+                } else {
+                    return "";
+                }
+            }
+            
+            @Override
+            public LocalDate fromString(String string) {
+                if (string != null && !string.isEmpty()) {
+                    return LocalDate.parse(string, dateFormatter);
+                } else {
+                    return null;
+                }
+            }
+        });
+        
+        // Configurer les champs numériques pour n'accepter que des nombres
+        prixAchatField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.matches("\\d*(\\.\\d*)?")) {
+                prixAchatField.setText(oldValue);
+            }
+        });
+        
+        prixVenteField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.matches("\\d*(\\.\\d*)?")) {
+                prixVenteField.setText(oldValue);
+            }
+        });
+        
+        stockAField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.matches("\\d*")) {
+                stockAField.setText(oldValue);
+            }
+        });
+        
+        stockVField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.matches("\\d*")) {
+                stockVField.setText(oldValue);
+            }
+        });
+    }
+    
+    /**
+     * Configure le produit à modifier
+     * @param produit Produit à modifier
+     */
+    public void setProduit(Produit produit) {
+        this.produit = produit;
+        
+        if (produit != null) {
+            // Remplir les champs avec les infos du produit
+            nomField.setText(produit.getNom());
+            descriptionField.setText(produit.getDescription());
+            prixAchatField.setText(String.valueOf(produit.getPrixAchat()));
+            prixVenteField.setText(String.valueOf(produit.getPrixVente()));
+            stockAField.setText(String.valueOf(produit.getQuantiteStock()));
+            stockVField.setText(String.valueOf(produit.getQuantiteStock()));
+            
+            // Date d'expiration
+            LocalDate dateExpiration = produit.getDateExpiration();
+            if (dateExpiration != null) {
+                dateExpirationPicker.setValue(dateExpiration);
+            }
+            
+            // Catégorie
+            String categorie = produit.getCategorie();
+            if (categorie != null && !categorie.isEmpty()) {
+                // Ajouter la catégorie si elle n'existe pas déjà dans la liste
+                if (!categorieField.getItems().contains(categorie)) {
+                    categorieField.getItems().add(categorie);
+                }
+                categorieField.setValue(categorie);
+            }
+        }
+    }
+    
+    /**
+     * Récupère le produit configuré dans la boîte de dialogue
+     * @return Produit configuré
+     */
+    public Produit getProduit() {
+        if (produit == null) {
+            produit = new Produit();
+        }
+        
+        produit.setNom(nomField.getText());
+        produit.setDescription(descriptionField.getText());
+        
+        try {
+            produit.setPrixAchat(Double.parseDouble(prixAchatField.getText()));
+        } catch (NumberFormatException e) {
+            produit.setPrixAchat(0.0);
+        }
+        
+        try {
+            produit.setPrixVente(Double.parseDouble(prixVenteField.getText()));
+        } catch (NumberFormatException e) {
+            produit.setPrixVente(0.0);
+        }
+        
+        try {
+            int stockActuel = Integer.parseInt(stockAField.getText());
+            produit.setQuantiteStock(stockActuel);
+        } catch (NumberFormatException e) {
+            produit.setQuantiteStock(0);
+        }
+        
+        // Note: nous ne traitons pas le champ stockVField car la classe Produit
+        // ne semble pas disposer d'une propriété correspondante. Ce champ peut être
+        // utilisé à titre informatif uniquement.
+        
+        produit.setCategorie(categorieField.getValue());
+        
+        produit.setDateExpiration(dateExpirationPicker.getValue());
+        
+        return produit;
+    }
+    
+    /**
+     * Valide le formulaire et désactive le bouton OK si le formulaire n'est pas valide
+     * @param dialog La boîte de dialogue à valider
+     */
+    public void configurerValidation(Dialog<?> dialog) {
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        
+        // Désactiver le bouton OK si les champs obligatoires sont vides
+        okButton.setDisable(true);
+        
+        // Ajouter un écouteur pour vérifier la validité du formulaire
+        nomField.textProperty().addListener((observable, oldValue, newValue) -> {
+            okButton.setDisable(newValue.trim().isEmpty());
+        });
+    }
+    
+    /**
+     * S'assure que la table des catégories existe dans la base de données et contient les catégories par défaut
+     * @throws SQLException si une erreur SQL se produit
+     */
+    private void ensureCategoriesExist() throws SQLException {
+        if (!DatabaseConfig.isConnected()) {
+            System.out.println("Base de données non accessible. Vérification de la table des catégories ignorée.");
+            return;
+        }
+        
+        try (Connection conn = DatabaseConfig.getConnection()) {
+            // Vérifier si la table categories existe
+            DatabaseMetaData meta = conn.getMetaData();
+            ResultSet tables = meta.getTables(null, null, "categories", null);
+            
+            if (!tables.next()) {
+                // La table n'existe pas, la créer
+                Statement stmt = conn.createStatement();
+                stmt.execute("CREATE TABLE categories (" +
+                             "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                             "name VARCHAR(100) NOT NULL UNIQUE)");
+                System.out.println("Table 'categories' créée avec succès");
+            }
+            
+            // Vérifier si la table est vide
+            Statement stmt = conn.createStatement();
+            ResultSet count = stmt.executeQuery("SELECT COUNT(*) FROM categories");
+            
+            if (count.next() && count.getInt(1) == 0) {
+                // La table est vide, ajouter les catégories par défaut
+                System.out.println("Ajout des catégories par défaut...");
+                
+                for (String categorie : getDefaultCategories()) {
+                    try {
+                        PreparedStatement pstmt = conn.prepareStatement("INSERT INTO categories (name) VALUES (?)");
+                        pstmt.setString(1, categorie);
+                        pstmt.executeUpdate();
+                    } catch (SQLException e) {
+                        // Ignorer les erreurs de duplication (catégorie déjà existante)
+                        if (!e.getMessage().contains("Duplicate entry")) {
+                            throw e;
+                        }
+                    }
+                }
+                System.out.println("Catégories par défaut ajoutées avec succès");
+            }
+        }
+    }
+    
+    /**
+     * Retourne la liste des catégories par défaut
+     * @return Liste des catégories pharmaceutiques par défaut
+     */
+    private List<String> getDefaultCategories() {
+        List<String> categories = new ArrayList<>();
+        categories.add("Analgésiques");
+        categories.add("Anti-inflammatoires");
+        categories.add("Antibiotiques");
+        categories.add("Antihistaminiques");
+        categories.add("Gastro-entérologie");
+        categories.add("Dermatologie");
+        categories.add("Cardiologie");
+        categories.add("Vitamines");
+        categories.add("Compléments alimentaires");
+        categories.add("Homéopathie");
+        categories.add("Hygiène");
+        categories.add("Premiers soins");
+        categories.add("Ophtalmologie");
+        categories.add("ORL");
+        categories.add("Contraception");
+        categories.add("Nutrition");
+        categories.add("Autres");
+        return categories;
+    }
+    
+    /**
+     * Charge les catégories depuis la base de données ou utilise une liste par défaut
+     * @return Liste des catégories disponibles
+     */
+    private List<String> loadCategoriesFromDatabase() {
+        // Définir directement les catégories pharmaceutiques (solution garantie)
+        List<String> defaultCategories = getDefaultCategories();
+        
+        // Essayer de charger depuis la base de données seulement si une connexion est disponible
+        List<String> dbCategories = new ArrayList<>();
+        if (DatabaseConfig.isConnected()) {
+            try {
+                // Essayer depuis la table categories
+                dbCategories = loadFromTable("categories", "name");
+                if (!dbCategories.isEmpty()) {
+                    System.out.println("Catégories chargées depuis la base de données: " + dbCategories.size());
+                    return dbCategories;
+                }
+                
+                // Essayer depuis la colonne 'categorie' de la table produits
+                try (Connection conn = DatabaseConfig.getConnection()) {
+                    String query = "SELECT DISTINCT categorie FROM produits WHERE categorie IS NOT NULL AND categorie != ''";
+                    PreparedStatement pstmt = conn.prepareStatement(query);
+                    ResultSet rs = pstmt.executeQuery();
+                    
+                    while (rs.next()) {
+                        String categorie = rs.getString("categorie");
+                        if (categorie != null && !categorie.isEmpty()) {
+                            dbCategories.add(categorie);
+                        }
+                    }
+                    
+                    if (!dbCategories.isEmpty()) {
+                        System.out.println("Catégories chargées depuis les produits existants: " + dbCategories.size());
+                        return dbCategories;
+                    }
+                }
+            } catch (SQLException e) {
+                System.out.println("Erreur lors de l'accès à la base de données: " + e.getMessage());
+            }
+        }
+        
+        System.out.println("Utilisation des catégories par défaut");
+        // Si nous sommes ici, aucune catégorie n'a été trouvée en base, on utilise celles par défaut
+        return defaultCategories;
+    }
+    
+    /**
+     * Charge les catégories depuis une table spécifique
+     * @param tableName Nom de la table
+     * @param columnName Nom de la colonne contenant le nom de la catégorie
+     * @return Liste des catégories
+     */
+    private List<String> loadFromTable(String tableName, String columnName) {
+        List<String> categories = new ArrayList<>();
+        String query = "SELECT " + columnName + " FROM " + tableName;
+        
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            
+            ResultSet rs = pstmt.executeQuery();
+            
+            while (rs.next()) {
+                String categorie = rs.getString(columnName);
+                if (categorie != null && !categorie.isEmpty()) {
+                    categories.add(categorie);
+                }
+            }
+            
+        } catch (SQLException e) {
+            // Ne pas afficher d'erreur, juste retourner une liste vide
+            System.out.println("Erreur lors du chargement des catégories depuis la table " + tableName + ": " + e.getMessage());
+        }
+        
+        return categories;
+    }
+}

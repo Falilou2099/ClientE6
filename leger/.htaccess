@@ -1,0 +1,25 @@
+RewriteEngine On
+RewriteBase /bigpharma/
+
+# Rediriger la racine vers /public
+RewriteRule ^$ public/ [R=302,L]
+
+# Traiter les autres requêtes
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ public/index.php?url=$1 [QSA,L]
+
+# Interdire l'accès direct aux fichiers sensibles
+<FilesMatch "^(config|src|templates)">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Activer la compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
+</IfModule>
+
+# Gestion des erreurs
+ErrorDocument 404 /public/404.php
+ErrorDocument 500 /public/500.php

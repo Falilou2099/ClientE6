@@ -1,0 +1,120 @@
+<?php
+namespace Controllers;
+
+use Models\Order;
+use Models\Client;
+use Models\Product;
+
+class SalesController {
+    /**
+     * Affiche la liste des ventes (historique)
+     */
+    public function index() {
+        // Vérifier si l'utilisateur est connecté
+        if (!isset($_SESSION['user_id'])) {
+            $_SESSION['error'] = "Vous devez être connecté pour accéder à cette page.";
+            header('Location: /bigpharma/login');
+            exit;
+        }
+
+        // Récupérer les paramètres de recherche, de filtrage et de pagination
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $perPage = 10; // Nombre de ventes par page
+        $pharmacieId = isset($_SESSION['pharmacie_id']) ? $_SESSION['pharmacie_id'] : null;
+        
+        // Récupérer les paramètres de filtrage
+        $date_debut = isset($_GET['date_debut']) ? $_GET['date_debut'] : '';
+        $date_fin = isset($_GET['date_fin']) ? $_GET['date_fin'] : '';
+        $produit_id = isset($_GET['produit_id']) ? (int)$_GET['produit_id'] : 0;
+        $client_id = isset($_GET['client_id']) ? (int)$_GET['client_id'] : 0;
+        
+        // Récupérer le paramètre de tri
+        $sort = isset($_GET['sort']) ? $_GET['sort'] : 'date_desc';
+        
+        // Initialiser les variables par défaut
+        $sales = [];
+        $totalSales = 0;
+        $totalPages = 0;
+        $salesStats = [
+            'total_ventes' => 0,
+            'montant_total' => 0,
+            'ventes_aujourd_hui' => 0,
+            'montant_aujourd_hui' => 0,
+            'ventes_ce_mois' => 0,
+            'montant_ce_mois' => 0,
+            'produits_populaires' => []
+        ];
+        
+        try {
+            // Récupérer les listes pour les filtres
+            $produits = $this->getProductsList();
+            $clients = $this->getClientsList();
+            
+            // Récupérer les ventes avec filtres et tri
+            $sales = $this->getSales($search, $page, $perPage, $pharmacieId, $date_debut, $date_fin, $produit_id, $client_id, $sort);
+            $totalSales = $this->getTotalSalesCount($search, $pharmacieId, $date_debut, $date_fin, $produit_id, $client_id);
+            
+            // Calculer le nombre total de pages
+            $totalPages = ceil($totalSales / $perPage);
+            
+            // Calculer les statistiques des ventes
+            $salesStats = $this->calculateSalesStats($pharmacieId);
+            
+            // Enrichir les données des ventes avec les noms des produits
+            foreach ($sales as &$sale) {
+                $sale['produits'] = $this->getProductNamesBySaleId($sale['commande_id']);
+            }
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors de la récupération des ventes: ' . $e->getMessage());
+            
+            // Afficher un message d'erreur
+            $error = 'Une erreur est survenue lors de la récupération des ventes.';
+        }
+        
+        // Charger la vue avec les données (qu'il y ait eu une erreur ou non)
+        require_once __DIR__ . '/../../views/sales/index.php';
+    }
+
+    /**
+     * Affiche les détails d'une vente
+     */
+    public function show($id) {
+        // Vérifier si l'utilisateur est connecté
+        if (!isset($_SESSION['user_id'])) {
+            $_SESSION['error'] = "Vous devez être connecté pour accéder à cette page.";
+            header('Location: /bigpharma/login');
+            exit;
+        }
+        
+        try {
+            // Récupérer la vente par son ID
+            $sale = $this->getSaleById($id);
+            
+            if (!$sale) {
+                // Vente non trouvée
+                $_SESSION['error'] = "La vente avec l'ID $id n'existe pas.";
+                header('Location: /bigpharma/sales');
+                exit;
+            }
+            
+            // Récupérer les détails de la vente (produits, client, etc.)
+            $saleDetails = $this->getSaleDetails($id);
+            
+            if ($saleDetails === false) {
+                $_SESSION['error'] = "Impossible de récupérer les détails de la vente.";
+                header('Location: /bigpharma/sales');
+                exit;
+            }
+            
+            // Charger la vue avec les données
+            require_once __DIR__ . '/../../views/sales/show.php';
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors de l\'affichage des détails de la vente: ' . $e->getMessage());
+            $_SESSION['error'] = "Une erreur est survenue lors de l'affichage des détails de la vente.";
+            header('Location: /bigpharma/sales');
+            exit;
+        }
+    }

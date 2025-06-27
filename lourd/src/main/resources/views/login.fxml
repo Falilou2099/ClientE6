@@ -3,16 +3,21 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.text.*?>
 
 <VBox alignment="CENTER" spacing="20" xmlns:fx="http://javafx.com/fxml" fx:controller="com.gestionpharma.controllers.LoginController">
     <padding>
         <Insets top="20" right="40" bottom="20" left="40"/>
     </padding>
+    
+    <Label text="Gestion Produits Pharma - Application Lourde" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
 
     <TabPane>
         <Tab text="Connexion">
             <VBox spacing="15" alignment="CENTER">
-                <TextField fx:id="usernameField" promptText="Nom d'utilisateur"/>
+                <Label fx:id="emailLabel" text="Utilisez l'adresse email que vous avez renseignée lors de l'inscription sur l'application web" 
+                       textAlignment="CENTER" wrapText="true" style="-fx-font-size: 12px; -fx-text-fill: #555;" />
+                <TextField fx:id="emailField" promptText="Adresse email"/>
                 <PasswordField fx:id="passwordField" promptText="Mot de passe"/>
                 <Button text="Se connecter" onAction="#handleLogin" styleClass="button-primary"/>
             </VBox>

@@ -32,24 +32,21 @@ if %JAVA_FOUND% EQU 0 (
 )
 
 :compile
-echo Compilation de l'application...
+echo Compilation de l'application en utilisant javac...
 
-REM Définir le chemin vers Maven
-set MAVEN_HOME=C:\Users\toure\Downloads\apache-maven-3.9.9
-if exist "%MAVEN_HOME%\bin\mvn.cmd" (
-    echo Maven trouvé dans %MAVEN_HOME%
-    call "%MAVEN_HOME%\bin\mvn.cmd" clean package -DskipTests
-) else (
-    echo ERREUR: Maven n'est pas trouvé dans %MAVEN_HOME%
-    echo Veuillez installer Maven ou corriger le chemin dans ce script.
-    pause
-    exit /b 1
-)
+REM Créer le répertoire pour les fichiers compilés s'il n'existe pas
+if not exist target\classes mkdir target\classes
+
+REM Compiler toutes les classes Java
+echo Compilation des classes Java...
+javac -d target\classes -cp "src\main\java;lib\*" src\main\java\com\gestionpharma\controllers\ProduitDialogController.java
 
 if %ERRORLEVEL% NEQ 0 (
     echo ERREUR: La compilation a échoué.
     pause
     exit /b 1
+) else (
+    echo Compilation réussie.
 )
 
 REM Lancer l'application

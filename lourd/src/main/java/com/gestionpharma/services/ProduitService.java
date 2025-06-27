@@ -1,9 +1,8 @@
 package com.gestionpharma.services;
 
-import com.gestionpharma.config.DatabaseConfig;
+import com.gestionpharma.config.DatabaseConfigSimple;
 import com.gestionpharma.models.Produit;
-import com.gestionpharma.utils.AlertUtils;
-
+import javax.swing.JOptionPane;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -23,7 +22,7 @@ public class ProduitService {
         List<Produit> produits = new ArrayList<>();
         String query = "SELECT * FROM produits WHERE pharmacie_id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, pharmacieId);
@@ -35,8 +34,7 @@ public class ProduitService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer les produits : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return produits;
@@ -49,13 +47,13 @@ public class ProduitService {
      * @return true si l'ajout a réussi, false sinon
      */
     public boolean ajouterProduit(Produit produit, int pharmacieId) {
-        try (Connection conn = DatabaseConfig.getConnection()) {
+        try (Connection conn = DatabaseConfigSimple.getConnection()) {
             // Vérifier la structure de la table produits
             verifierColonneProduits(conn);
             
             // Ajouter le produit
             String query = "INSERT INTO produits (nom, description, prix_achat, prix_vente, categorie, " +
-                           "quantite_stock, seuil_alerte, date_expiration, pharmacie_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                           "quantite_stock, seuil_alerte, date_expiration, pharmacie_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             
             try (PreparedStatement pstmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
                 pstmt.setString(1, produit.getNom());
@@ -68,6 +66,8 @@ public class ProduitService {
                 pstmt.setDate(8, produit.getDateExpiration() != null ? 
                         Date.valueOf(produit.getDateExpiration()) : null);
                 pstmt.setInt(9, pharmacieId);
+                pstmt.setString(10, produit.getImageUrl() != null ? produit.getImageUrl() : 
+                        "https://via.placeholder.com/150x150?text=Produit");
                 
                 int affectedRows = pstmt.executeUpdate();
                 
@@ -91,22 +91,16 @@ public class ProduitService {
                                 activityStmt.executeUpdate();
                             }
                         } catch (SQLException e) {
-                            // Ignorer les erreurs d'activité, ce n'est pas critique
-                            System.out.println("Erreur lors de l'ajout de l'activité: " + e.getMessage());
+                            System.err.println("Erreur lors de l'ajout de l'activité : " + e.getMessage());
                         }
                         
                         return true;
                     }
                 }
-            } catch (SQLException e) {
-                AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                        "Impossible d'ajouter le produit : " + e.getMessage());
-                return false;
             }
+            
         } catch (SQLException e) {
-            System.out.println("Erreur de connexion à la base de données: " + e.getMessage());
-            AlertUtils.showErrorAlert("Erreur", "Erreur de connexion", 
-                    "Impossible de se connecter à la base de données : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur lors de l'ajout du produit : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -119,22 +113,28 @@ public class ProduitService {
      */
     private void verifierColonneProduits(Connection conn) throws SQLException {
         DatabaseMetaData metaData = conn.getMetaData();
-        ResultSet columns = metaData.getColumns(null, null, "produits", "date_expiration");
         
+        // Vérifier la colonne date_expiration
+        ResultSet columns = metaData.getColumns(null, null, "produits", "date_expiration");
         if (!columns.next()) {
-            // La colonne n'existe pas, on l'ajoute
+            String alterQuery = "ALTER TABLE produits ADD COLUMN date_expiration DATE";
             try (Statement stmt = conn.createStatement()) {
-                stmt.execute("ALTER TABLE produits ADD COLUMN date_expiration DATE");
+                stmt.executeUpdate(alterQuery);
                 System.out.println("Colonne date_expiration ajoutée à la table produits");
-            } catch (SQLException e) {
-                // Si l'erreur est due à une colonne déjà existante, on ignore
-                if (!e.getMessage().contains("Duplicate column")) {
-                    throw e;
-                }
             }
         }
-        
         columns.close();
+        
+        // Vérifier la colonne image_url
+        ResultSet imageUrlColumns = metaData.getColumns(null, null, "produits", "image_url");
+        if (!imageUrlColumns.next()) {
+            String alterQuery = "ALTER TABLE produits ADD COLUMN image_url TEXT";
+            try (Statement stmt = conn.createStatement()) {
+                stmt.executeUpdate(alterQuery);
+                System.out.println("Colonne image_url ajoutée à la table produits");
+            }
+        }
+        imageUrlColumns.close();
     }
     
     /**
@@ -185,9 +185,9 @@ public class ProduitService {
      */
     public boolean modifierProduit(Produit produit) {
         String query = "UPDATE produits SET nom = ?, description = ?, prix_achat = ?, prix_vente = ?, " +
-                       "categorie = ?, quantite_stock = ?, date_expiration = ? WHERE id = ?";
+                       "categorie = ?, quantite_stock = ?, date_expiration = ?, image_url = ? WHERE id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setString(1, produit.getNom());
@@ -198,14 +198,14 @@ public class ProduitService {
             pstmt.setInt(6, produit.getQuantiteStock());
             pstmt.setDate(7, produit.getDateExpiration() != null ? 
                     Date.valueOf(produit.getDateExpiration()) : null);
-            pstmt.setInt(8, produit.getId());
+            pstmt.setString(8, produit.getImageUrl() != null ? produit.getImageUrl() : 
+                    "https://via.placeholder.com/150x150?text=Produit");
+            pstmt.setInt(9, produit.getId());
             
-            int affectedRows = pstmt.executeUpdate();
-            return affectedRows > 0;
+            return pstmt.executeUpdate() > 0;
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de modifier le produit : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur lors de la modification du produit : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
@@ -216,7 +216,7 @@ public class ProduitService {
      * @return true si la suppression a réussi, false sinon
      */
     public boolean supprimerProduit(int produitId) {
-        try (Connection conn = DatabaseConfig.getConnection()) {
+        try (Connection conn = DatabaseConfigSimple.getConnection()) {
             String query = "DELETE FROM produits WHERE id = ?";
             try (PreparedStatement pstmt = conn.prepareStatement(query)) {
                 pstmt.setInt(1, produitId);
@@ -224,8 +224,7 @@ public class ProduitService {
                 return affectedRows > 0;
             }
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données",
-                    "Impossible de supprimer le produit : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
@@ -241,7 +240,7 @@ public class ProduitService {
         String query = "SELECT * FROM produits WHERE (nom LIKE ? OR description LIKE ? OR categorie LIKE ?) AND pharmacie_id = ?";
         String searchTermWithWildcards = "%" + searchTerm + "%";
 
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
 
             pstmt.setString(1, searchTermWithWildcards);
@@ -256,8 +255,7 @@ public class ProduitService {
             }
 
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données",
-                    "Erreur lors de la recherche des produits : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
 
         return produits;
@@ -271,7 +269,7 @@ public class ProduitService {
     public Produit getProduitById(int produitId) {
         String query = "SELECT * FROM produits WHERE id = ?";
 
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
 
             pstmt.setInt(1, produitId);
@@ -284,8 +282,7 @@ public class ProduitService {
             }
 
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données",
-                    "Erreur lors de la récupération du produit : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
             return null;
         }
     }
@@ -299,7 +296,7 @@ public class ProduitService {
         List<Produit> produits = new ArrayList<>();
         String query = "SELECT * FROM produits WHERE quantite_stock <= seuil_alerte AND pharmacie_id = ?";
 
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
 
             pstmt.setInt(1, pharmacieId);
@@ -311,8 +308,7 @@ public class ProduitService {
             }
 
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données",
-                    "Erreur lors de la récupération des produits en alerte : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
 
         return produits;
@@ -328,7 +324,7 @@ public class ProduitService {
         List<Produit> produits = new ArrayList<>();
         String query = "SELECT * FROM produits WHERE date_expiration <= DATE_ADD(CURDATE(), INTERVAL ? DAY) AND pharmacie_id = ?";
 
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
 
             pstmt.setInt(1, pharmacieId);
@@ -341,8 +337,7 @@ public class ProduitService {
             }
 
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données",
-                    "Impossible de récupérer les produits en expiration : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
 
         return produits;
@@ -367,6 +362,14 @@ public class ProduitService {
         Date dateExpiration = rs.getDate("date_expiration");
         if (dateExpiration != null) {
             produit.setDateExpiration(dateExpiration.toLocalDate());
+        }
+        
+        // Récupérer l'URL de l'image
+        String imageUrl = rs.getString("image_url");
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            produit.setImageUrl(imageUrl);
+        } else {
+            produit.setImageUrl("https://via.placeholder.com/150x150?text=Produit");
         }
         
         return produit;
@@ -417,7 +420,7 @@ public class ProduitService {
         List<String> categories = new ArrayList<>();
         String query = "SELECT DISTINCT categorie FROM produits WHERE pharmacie_id = ? ORDER BY categorie";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, pharmacieId);
@@ -431,8 +434,7 @@ public class ProduitService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer les catégories : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données : " + e.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return categories;

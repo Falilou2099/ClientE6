@@ -1,0 +1,346 @@
+    /**
+     * Calcule les statistiques des ventes
+     */
+    private function calculateSalesStats($pharmacieId = null) {
+        // Connexion à la base de données
+        $pdo = $this->initPDO();
+        
+        try {
+            // Vérifier si la table commandes existe
+            $stmt = $pdo->query("SHOW TABLES LIKE 'commandes'");
+            $commandesExists = $stmt->rowCount() > 0;
+            
+            if (!$commandesExists) {
+                // La table n'existe pas, retourner des statistiques vides
+                error_log("La table 'commandes' n'existe pas dans la base de données.");
+                return [
+                    'total_ventes' => 0,
+                    'montant_total' => 0,
+                    'ventes_aujourd_hui' => 0,
+                    'montant_aujourd_hui' => 0,
+                    'ventes_ce_mois' => 0,
+                    'montant_ce_mois' => 0,
+                    'produits_populaires' => []
+                ];
+            }
+            
+            // Vérifier les colonnes de la table commandes
+            $stmt = $pdo->query("DESCRIBE commandes");
+            $columns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            
+            // Initialiser les statistiques
+            $stats = [
+                'total_ventes' => 0,
+                'montant_total' => 0,
+                'ventes_aujourd_hui' => 0,
+                'montant_aujourd_hui' => 0,
+                'ventes_ce_mois' => 0,
+                'montant_ce_mois' => 0,
+                'produits_populaires' => []
+            ];
+            
+            // Construire les conditions WHERE communes
+            $whereConditions = [];
+            $params = [];
+            
+            if ($pharmacieId && in_array('pharmacie_id', $columns)) {
+                $whereConditions[] = "c.pharmacie_id = :pharmacie_id";
+                $params[':pharmacie_id'] = $pharmacieId;
+            }
+            
+            $whereClause = !empty($whereConditions) ? " WHERE " . implode(" AND ", $whereConditions) : "";
+            
+            // 1. Nombre total de ventes et montant total
+            $query = "SELECT COUNT(*) AS total_ventes, SUM(montant_total) AS montant_total
+                     FROM commandes c" . $whereClause;
+            
+            $stmt = $pdo->prepare($query);
+            
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            $stats['total_ventes'] = $result['total_ventes'] ?? 0;
+            $stats['montant_total'] = $result['montant_total'] ?? 0;
+            
+            // 2. Ventes d'aujourd'hui
+            $today = date('Y-m-d');
+            $query = "SELECT COUNT(*) AS ventes_aujourd_hui, SUM(montant_total) AS montant_aujourd_hui
+                     FROM commandes c
+                     WHERE DATE(date_commande) = :today";
+            
+            if (!empty($whereConditions)) {
+                $query .= " AND " . implode(" AND ", $whereConditions);
+            }
+            
+            $stmt = $pdo->prepare($query);
+            $stmt->bindValue(':today', $today);
+            
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            $stats['ventes_aujourd_hui'] = $result['ventes_aujourd_hui'] ?? 0;
+            $stats['montant_aujourd_hui'] = $result['montant_aujourd_hui'] ?? 0;
+            
+            // 3. Ventes du mois en cours
+            $firstDayOfMonth = date('Y-m-01');
+            $lastDayOfMonth = date('Y-m-t');
+            
+            $query = "SELECT COUNT(*) AS ventes_ce_mois, SUM(montant_total) AS montant_ce_mois
+                     FROM commandes c
+                     WHERE DATE(date_commande) BETWEEN :first_day AND :last_day";
+            
+            if (!empty($whereConditions)) {
+                $query .= " AND " . implode(" AND ", $whereConditions);
+            }
+            
+            $stmt = $pdo->prepare($query);
+            $stmt->bindValue(':first_day', $firstDayOfMonth);
+            $stmt->bindValue(':last_day', $lastDayOfMonth);
+            
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            $stats['ventes_ce_mois'] = $result['ventes_ce_mois'] ?? 0;
+            $stats['montant_ce_mois'] = $result['montant_ce_mois'] ?? 0;
+            
+            // 4. Produits les plus populaires
+            $query = "SELECT p.id, p.nom, SUM(lc.quantite) AS quantite_vendue
+                     FROM lignes_commande lc
+                     JOIN produits p ON lc.produit_id = p.id
+                     JOIN commandes c ON lc.commande_id = c.id";
+            
+            if (!empty($whereConditions)) {
+                $query .= " WHERE " . implode(" AND ", $whereConditions);
+            }
+            
+            $query .= " GROUP BY p.id
+                       ORDER BY quantite_vendue DESC
+                       LIMIT 5";
+            
+            $stmt = $pdo->prepare($query);
+            
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            
+            $stmt->execute();
+            $stats['produits_populaires'] = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            
+            return $stats;
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors du calcul des statistiques de ventes: ' . $e->getMessage());
+            
+            // Retourner des statistiques vides
+            return [
+                'total_ventes' => 0,
+                'montant_total' => 0,
+                'ventes_aujourd_hui' => 0,
+                'montant_aujourd_hui' => 0,
+                'ventes_ce_mois' => 0,
+                'montant_ce_mois' => 0,
+                'produits_populaires' => []
+            ];
+        }
+    }
+
+    /**
+     * Supprime une vente par son ID
+     */
+    public function delete($id) {
+        // Vérifier si l'utilisateur est connecté
+        if (!isset($_SESSION['user_id'])) {
+            $_SESSION['error'] = "Vous devez être connecté pour accéder à cette page.";
+            header('Location: /bigpharma/login');
+            exit;
+        }
+        
+        // Connexion à la base de données
+        $pdo = $this->initPDO();
+        
+        try {
+            // Vérifier si les tables nécessaires existent
+            $stmt = $pdo->query("SHOW TABLES LIKE 'commandes'");
+            $commandesExists = $stmt->rowCount() > 0;
+            
+            $stmt = $pdo->query("SHOW TABLES LIKE 'lignes_commande'");
+            $lignesCommandeExists = $stmt->rowCount() > 0;
+            
+            if (!$commandesExists) {
+                $_SESSION['error'] = "Impossible de supprimer la vente. La table 'commandes' n'existe pas.";
+                header('Location: /bigpharma/sales');
+                exit;
+            }
+            
+            // Démarrer une transaction
+            $pdo->beginTransaction();
+            
+            // Vérifier si la vente existe
+            $query = "SELECT id FROM commandes WHERE id = :id";
+            $stmt = $pdo->prepare($query);
+            $stmt->bindValue(':id', $id, \PDO::PARAM_INT);
+            $stmt->execute();
+            
+            if ($stmt->rowCount() === 0) {
+                // La vente n'existe pas
+                $_SESSION['error'] = "La vente avec l'ID $id n'existe pas.";
+                header('Location: /bigpharma/sales');
+                exit;
+            }
+            
+            // Supprimer d'abord les lignes de commande associées si la table existe
+            if ($lignesCommandeExists) {
+                $query = "DELETE FROM lignes_commande WHERE commande_id = :id";
+                $stmt = $pdo->prepare($query);
+                $stmt->bindValue(':id', $id, \PDO::PARAM_INT);
+                $stmt->execute();
+            }
+            
+            // Ensuite, supprimer la commande elle-même
+            $query = "DELETE FROM commandes WHERE id = :id";
+            $stmt = $pdo->prepare($query);
+            $stmt->bindValue(':id', $id, \PDO::PARAM_INT);
+            $stmt->execute();
+            
+            // Valider la transaction
+            $pdo->commit();
+            
+            // Rediriger avec un message de succès
+            $_SESSION['success'] = 'La vente a été supprimée avec succès.';
+            header('Location: /bigpharma/sales');
+            exit;
+            
+        } catch (\Exception $e) {
+            // En cas d'erreur, annuler la transaction
+            if (isset($pdo)) {
+                $pdo->rollBack();
+            }
+            
+            // Journaliser l'erreur
+            error_log('Erreur lors de la suppression de la vente: ' . $e->getMessage());
+            
+            // Rediriger avec un message d'erreur
+            $_SESSION['error'] = "Une erreur est survenue lors de la suppression de la vente.";
+            header('Location: /bigpharma/sales');
+            exit;
+        }
+    }
+    
+    /**
+     * Génère un PDF pour imprimer les détails d'une vente
+     */
+    public function printSale($id) {
+        // Vérifier si l'utilisateur est connecté
+        if (!isset($_SESSION['user_id'])) {
+            $_SESSION['error'] = "Vous devez être connecté pour accéder à cette page.";
+            header('Location: /bigpharma/login');
+            exit;
+        }
+        
+        try {
+            // Récupérer la vente par son ID
+            $sale = $this->getSaleById($id);
+            
+            if (!$sale) {
+                // Vente non trouvée
+                $_SESSION['error'] = "La vente avec l'ID $id n'existe pas.";
+                header('Location: /bigpharma/sales');
+                exit;
+            }
+            
+            // Récupérer les détails de la vente (produits, client, etc.)
+            $saleDetails = $this->getSaleDetails($id);
+            
+            if ($saleDetails === false) {
+                $_SESSION['error'] = "Impossible de récupérer les détails de la vente.";
+                header('Location: /bigpharma/sales');
+                exit;
+            }
+            
+            // Générer le PDF (pour l'instant, nous affichons simplement une page de détails avec un message)
+            $_SESSION['success'] = 'La fonctionnalité d\'impression sera bientôt disponible.';
+            
+            // Rediriger vers la page de détails
+            header('Location: /bigpharma/sales/show/' . $id);
+            exit;
+            
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors de l\'impression de la vente: ' . $e->getMessage());
+            
+            // Rediriger avec un message d'erreur
+            $_SESSION['error'] = "Une erreur est survenue lors de l'impression de la vente.";
+            header('Location: /bigpharma/sales');
+            exit;
+        }
+    }
+    
+    /**
+     * Exporte les détails d'une vente au format CSV
+     */
+    public function exportSale($id) {
+        // Vérifier si l'utilisateur est connecté
+        if (!isset($_SESSION['user_id'])) {
+            $_SESSION['error'] = "Vous devez être connecté pour accéder à cette page.";
+            header('Location: /bigpharma/login');
+            exit;
+        }
+        
+        try {
+            // Récupérer la vente par son ID
+            $sale = $this->getSaleById($id);
+            
+            if (!$sale) {
+                // Vente non trouvée
+                $_SESSION['error'] = "La vente avec l'ID $id n'existe pas.";
+                header('Location: /bigpharma/sales');
+                exit;
+            }
+            
+            // Récupérer les détails de la vente (produits, client, etc.)
+            $saleDetails = $this->getSaleDetails($id);
+            
+            if ($saleDetails === false) {
+                $_SESSION['error'] = "Impossible de récupérer les détails de la vente.";
+                header('Location: /bigpharma/sales');
+                exit;
+            }
+            
+            // Pour l'instant, nous affichons simplement un message
+            $_SESSION['success'] = 'La fonctionnalité d\'exportation sera bientôt disponible.';
+            
+            // Rediriger vers la page de détails
+            header('Location: /bigpharma/sales/show/' . $id);
+            exit;
+            
+        } catch (\Exception $e) {
+            // Journaliser l'erreur
+            error_log('Erreur lors de l\'exportation de la vente: ' . $e->getMessage());
+            
+            // Rediriger avec un message d'erreur
+            $_SESSION['error'] = "Une erreur est survenue lors de l'exportation de la vente.";
+            header('Location: /bigpharma/sales');
+            exit;
+        }
+    }
+
+    /**
+     * Initialise la connexion PDO
+     */
+    private function initPDO() {
+        $dbConfig = require_once __DIR__ . '/../../config/database.php';
+        return $GLOBALS['pdo'] ?? null;
+    }
+}

@@ -7,18 +7,27 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
 import java.util.Vector;
+import com.gestionpharma.utils.CategoriesProduits;
+import com.gestionpharma.models.Produit;
+import com.gestionpharma.services.ProduitService;
 
 public class GestionProduitFrame extends JFrame {
     private JTextField txtNom, txtDescription, txtPrix, txtQuantite;
     private JComboBox<String> cbCategorie;
     private JTable tableProduits;
     private DefaultTableModel modelProduits;
-    private ProduitDAO produitDAO;
+    private ProduitService produitService;
     private JButton btnAjouter, btnModifier, btnSupprimer;
     private int produitSelectionneId = -1;
+    private int pharmacieId = 1; // ID de la pharmacie par défaut
 
     public GestionProduitFrame() {
-        produitDAO = new ProduitDAO();
+        this(1); // Utilise l'ID de pharmacie par défaut
+    }
+
+    public GestionProduitFrame(int pharmacieId) {
+        this.pharmacieId = pharmacieId;
+        produitService = new ProduitService();
         initComponents();
         chargerProduits();
         chargerCategories();
@@ -111,8 +120,13 @@ public class GestionProduitFrame extends JFrame {
     }
 
     private void chargerCategories() {
-        List<String> categories = produitDAO.obtenirCategories();
+        // Supprimer tous les éléments existants
         cbCategorie.removeAllItems();
+        
+        // Utiliser la classe utilitaire pour obtenir toutes les catégories
+        List<String> categories = CategoriesProduits.obtenirCategories();
+        
+        // Ajouter chaque catégorie à la liste déroulante
         for (String categorie : categories) {
             cbCategorie.addItem(categorie);
         }
@@ -120,13 +134,13 @@ public class GestionProduitFrame extends JFrame {
 
     private void chargerProduits() {
         modelProduits.setRowCount(0);
-        List<Produit> produits = produitDAO.obtenirTousProduits();
+        List<Produit> produits = produitService.getAllProduits(pharmacieId);
         for (Produit produit : produits) {
             modelProduits.addRow(new Object[]{
                 produit.getId(),
                 produit.getNom(),
                 produit.getDescription(),
-                produit.getPrix(),
+                produit.getPrixVente(),
                 produit.getQuantiteStock(),
                 produit.getCategorie()
             });
@@ -134,38 +148,53 @@ public class GestionProduitFrame extends JFrame {
     }
 
     private void ajouterProduit() {
-        try {
-            String nom = txtNom.getText();
-            String description = txtDescription.getText();
-            double prix = Double.parseDouble(txtPrix.getText());
-            int quantite = Integer.parseInt(txtQuantite.getText());
-            String categorie = (String) cbCategorie.getSelectedItem();
-
-            Produit nouveauProduit = new Produit(nom, description, prix, quantite, categorie);
-            produitDAO.creerProduit(nouveauProduit);
+        // Créer et afficher la fenêtre de dialogue d'ajout de produit
+        AjoutProduitDialog dialog = new AjoutProduitDialog(this);
+        dialog.setVisible(true);
+        
+        // Vérifier si l'utilisateur a confirmé l'ajout
+        if (dialog.estConfirme()) {
+            // Récupérer le produit créé
+            Produit nouveauProduit = dialog.getProduit();
+            
+            // Définir la quantité en stock (par défaut à 0)
+            nouveauProduit.setQuantiteStock(0);
+            nouveauProduit.setPharmacieId(pharmacieId);
+            
+            // Enregistrer le produit dans la base de données
+            produitService.ajouterProduit(nouveauProduit, pharmacieId);
+            
+            // Actualiser la liste des produits
             chargerProduits();
-            reinitialiserFormulaire();
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Veuillez saisir des valeurs numériques valides pour le prix et la quantité.", "Erreur de saisie", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void modifierProduit() {
         if (produitSelectionneId != -1) {
-            try {
-                String nom = txtNom.getText();
-                String description = txtDescription.getText();
-                double prix = Double.parseDouble(txtPrix.getText());
-                int quantite = Integer.parseInt(txtQuantite.getText());
-                String categorie = (String) cbCategorie.getSelectedItem();
-
-                Produit produitModifie = new Produit(nom, description, prix, quantite, categorie);
-                produitModifie.setId(produitSelectionneId);
-                produitDAO.mettreAJourProduit(produitModifie);
-                chargerProduits();
-                reinitialiserFormulaire();
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Veuillez saisir des valeurs numériques valides pour le prix et la quantité.", "Erreur de saisie", JOptionPane.ERROR_MESSAGE);
+            // Récupérer le produit sélectionné
+            Produit produitAModifier = produitService.getProduitById(produitSelectionneId);
+            
+            if (produitAModifier != null) {
+                // Créer et afficher la fenêtre de dialogue de modification du produit
+                AjoutProduitDialog dialog = new AjoutProduitDialog(this, produitAModifier);
+                dialog.setVisible(true);
+                
+                // Vérifier si l'utilisateur a confirmé la modification
+                if (dialog.estConfirme()) {
+                    // Récupérer le produit modifié
+                    Produit produitModifie = dialog.getProduit();
+                    produitModifie.setId(produitSelectionneId);
+                    
+                    // Conserver la quantité en stock actuelle
+                    produitModifie.setQuantiteStock(produitAModifier.getQuantiteStock());
+                    
+                    // Mettre à jour le produit dans la base de données
+                    produitService.modifierProduit(produitModifie);
+                    
+                    // Actualiser la liste des produits
+                    chargerProduits();
+                    reinitialiserFormulaire();
+                }
             }
         }
     }
@@ -178,7 +207,7 @@ public class GestionProduitFrame extends JFrame {
                 JOptionPane.YES_NO_OPTION);
             
             if (confirmation == JOptionPane.YES_OPTION) {
-                produitDAO.supprimerProduit(produitSelectionneId);
+                produitService.supprimerProduit(produitSelectionneId);
                 chargerProduits();
                 reinitialiserFormulaire();
             }

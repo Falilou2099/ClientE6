@@ -1,12 +1,12 @@
 package com.gestionpharma.services;
 
-import com.gestionpharma.config.DatabaseConfig;
+import com.gestionpharma.config.DatabaseConfigSimple;
 import com.gestionpharma.models.Commande;
 import com.gestionpharma.models.DetailCommande;
 import com.gestionpharma.models.Fournisseur;
 import com.gestionpharma.models.Produit;
-import com.gestionpharma.utils.AlertUtils;
 
+import javax.swing.JOptionPane;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,7 +29,7 @@ public class CommandeService {
                        "JOIN fournisseurs f ON c.fournisseur_id = f.id " +
                        "WHERE c.pharmacie_id = ? ORDER BY c.date_commande DESC";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, pharmacieId);
@@ -41,11 +41,95 @@ public class CommandeService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer les commandes : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", 
+                    "Impossible de récupérer les commandes : " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
         }
         
         return commandes;
+    }
+    
+    /**
+     * Vérifie et crée les tables nécessaires pour les commandes
+     * @param conn Connexion à la base de données
+     * @throws SQLException En cas d'erreur SQL
+     */
+    private void verifierTablesCommande(Connection conn) throws SQLException {
+        DatabaseMetaData metaData = conn.getMetaData();
+        
+        // Vérifier si la table commandes existe
+        ResultSet tables = metaData.getTables(null, null, "commandes", null);
+        if (!tables.next()) {
+            // Créer la table commandes
+            try (Statement stmt = conn.createStatement()) {
+                String createTableSQL = "CREATE TABLE commandes (" +
+                                      "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                                      "fournisseur_id INT NOT NULL, " +
+                                      "date_commande DATE NOT NULL, " +
+                                      "date_livraison DATE NULL, " +
+                                      "statut VARCHAR(50) NOT NULL, " +
+                                      "notes TEXT NULL, " +
+                                      "montant_total DECIMAL(10, 2) NOT NULL, " +
+                                      "pharmacie_id INT NOT NULL, " +
+                                      "FOREIGN KEY (fournisseur_id) REFERENCES fournisseurs(id), " +
+                                      "FOREIGN KEY (pharmacie_id) REFERENCES pharmacies(id)" +
+                                      ")";
+                stmt.execute(createTableSQL);
+                System.out.println("Table 'commandes' créée avec succès.");
+            }
+        } else {
+            // Vérifier si la colonne notes existe
+            ResultSet notesColumn = metaData.getColumns(null, null, "commandes", "notes");
+            if (!notesColumn.next()) {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("ALTER TABLE commandes ADD COLUMN notes TEXT NULL");
+                    System.out.println("Colonne 'notes' ajoutée à la table commandes.");
+                }
+            }
+            notesColumn.close();
+        }
+        tables.close();
+        
+        // Vérifier si la table details_commandes existe
+        tables = metaData.getTables(null, null, "details_commandes", null);
+        if (!tables.next()) {
+            // Créer la table details_commandes
+            try (Statement stmt = conn.createStatement()) {
+                String createTableSQL = "CREATE TABLE details_commandes (" +
+                                      "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                                      "commande_id INT NOT NULL, " +
+                                      "produit_id INT NOT NULL, " +
+                                      "quantite INT NOT NULL, " +
+                                      "prix_unitaire DECIMAL(10, 2) NOT NULL, " +
+                                      "FOREIGN KEY (commande_id) REFERENCES commandes(id), " +
+                                      "FOREIGN KEY (produit_id) REFERENCES produits(id)" +
+                                      ")";
+                stmt.execute(createTableSQL);
+                System.out.println("Table 'details_commandes' créée avec succès.");
+            }
+        }
+        tables.close();
+        
+        // Vérifier si la table stocks existe
+        tables = metaData.getTables(null, null, "stocks", null);
+        if (!tables.next()) {
+            // Créer la table stocks
+            try (Statement stmt = conn.createStatement()) {
+                String createTableSQL = "CREATE TABLE stocks (" +
+                                      "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                                      "produit_id INT NOT NULL, " +
+                                      "pharmacie_id INT NOT NULL, " +
+                                      "quantite INT NOT NULL DEFAULT 0, " +
+                                      "seuil_alerte INT NOT NULL DEFAULT 10, " +
+                                      "date_derniere_maj TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " +
+                                      "FOREIGN KEY (produit_id) REFERENCES produits(id), " +
+                                      "FOREIGN KEY (pharmacie_id) REFERENCES pharmacies(id), " +
+                                      "UNIQUE KEY unique_produit_pharmacie (produit_id, pharmacie_id)" +
+                                      ")";
+                stmt.execute(createTableSQL);
+                System.out.println("Table 'stocks' créée avec succès.");
+            }
+        }
+        tables.close();
     }
     
     /**
@@ -55,7 +139,7 @@ public class CommandeService {
      */
     public boolean ajouterCommande(Commande commande) {
         // Vérifier si les tables existent et les créer si nécessaire
-        try (Connection conn = DatabaseConfig.getConnection()) {
+        try (Connection conn = DatabaseConfigSimple.getConnection()) {
             verifierTablesCommande(conn);
             
             // Démarrer une transaction
@@ -123,8 +207,8 @@ public class CommandeService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible d'ajouter la commande : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", 
+                    "Impossible d'ajouter la commande : " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -139,18 +223,36 @@ public class CommandeService {
     public boolean updateStatutCommande(int commandeId, String statut) {
         String query = "UPDATE commandes SET statut = ? WHERE id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
+        try (Connection conn = DatabaseConfigSimple.getConnection()) {
+            conn.setAutoCommit(false); // Démarrer une transaction
             
-            pstmt.setString(1, statut);
-            pstmt.setInt(2, commandeId);
-            
-            int affectedRows = pstmt.executeUpdate();
-            return affectedRows > 0;
+            try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+                pstmt.setString(1, statut);
+                pstmt.setInt(2, commandeId);
+                
+                int affectedRows = pstmt.executeUpdate();
+                
+                if (affectedRows > 0) {
+                    // Si le statut devient "Livré", ajouter les produits au stock
+                    if ("Livré".equalsIgnoreCase(statut) || "Livrée".equalsIgnoreCase(statut)) {
+                        ajouterProduitsEnStock(conn, commandeId);
+                    }
+                    
+                    conn.commit(); // Valider la transaction
+                    return true;
+                } else {
+                    conn.rollback(); // Annuler la transaction
+                    return false;
+                }
+                
+            } catch (SQLException e) {
+                conn.rollback(); // Annuler la transaction en cas d'erreur
+                throw e;
+            }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de mettre à jour le statut de la commande : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", 
+                    "Impossible de mettre à jour le statut de la commande : " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -165,7 +267,7 @@ public class CommandeService {
     public boolean updateDateLivraison(int commandeId, LocalDate dateLivraison) {
         String query = "UPDATE commandes SET date_livraison = ? WHERE id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setDate(1, Date.valueOf(dateLivraison));
@@ -175,8 +277,8 @@ public class CommandeService {
             return affectedRows > 0;
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de mettre à jour la date de livraison : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", 
+                    "Impossible de mettre à jour la date de livraison : " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -192,7 +294,7 @@ public class CommandeService {
                        "JOIN fournisseurs f ON c.fournisseur_id = f.id " +
                        "WHERE c.id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, commandeId);
@@ -203,8 +305,8 @@ public class CommandeService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer la commande : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", 
+                    "Impossible de récupérer la commande : " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
         }
         
         return null;
@@ -223,7 +325,7 @@ public class CommandeService {
                        "WHERE c.pharmacie_id = ? AND (f.nom LIKE ? OR c.statut LIKE ?) " +
                        "ORDER BY c.date_commande DESC";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             String searchPattern = "%" + searchTerm + "%";
@@ -239,8 +341,8 @@ public class CommandeService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de rechercher les commandes : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", 
+                    "Impossible de rechercher les commandes : " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
         }
         
         return commandes;
@@ -258,7 +360,7 @@ public class CommandeService {
                        "WHERE c.pharmacie_id = ? AND c.statut = 'En attente' " +
                        "ORDER BY c.date_commande DESC";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, pharmacieId);
@@ -270,8 +372,8 @@ public class CommandeService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer les commandes en attente : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", 
+                    "Impossible de récupérer les commandes en attente : " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
         }
         
         return commandes;
@@ -283,7 +385,7 @@ public class CommandeService {
      * @return true si la modification a réussi, false sinon
      */
     public boolean modifierCommande(Commande commande) {
-        try (Connection conn = DatabaseConfig.getConnection()) {
+        try (Connection conn = DatabaseConfigSimple.getConnection()) {
             // Démarrer une transaction
             conn.setAutoCommit(false);
             
@@ -348,9 +450,10 @@ public class CommandeService {
             } finally {
                 conn.setAutoCommit(true);
             }
+            
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de modifier la commande : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", 
+                    "Impossible de modifier la commande : " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -417,7 +520,7 @@ public class CommandeService {
                        "JOIN produits p ON dc.produit_id = p.id " +
                        "WHERE dc.commande_id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, commandeId);
@@ -476,17 +579,12 @@ public class CommandeService {
     }
     
     /**
-     * Vérifie si les tables nécessaires existent et les crée si nécessaire
-     * @param conn Connexion à la base de données
-     * @throws SQLException En cas d'erreur SQL
-     */
-    /**
      * Supprime une commande et ses détails associés
      * @param commandeId ID de la commande à supprimer
      * @return true si la suppression a réussi, false sinon
      */
     public boolean supprimerCommande(int commandeId) {
-        try (Connection conn = DatabaseConfig.getConnection()) {
+        try (Connection conn = DatabaseConfigSimple.getConnection()) {
             conn.setAutoCommit(false);
             
             try {
@@ -516,72 +614,73 @@ public class CommandeService {
             } catch (SQLException e) {
                 // En cas d'erreur, annuler la transaction
                 conn.rollback();
-                AlertUtils.showErrorAlert("Erreur", "Erreur de suppression", 
-                        "Impossible de supprimer la commande : " + e.getMessage());
+                JOptionPane.showMessageDialog(null, "Erreur de suppression", 
+                        "Impossible de supprimer la commande : " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
                 return false;
             }
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de connexion", 
-                    "Impossible de se connecter à la base de données : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de connexion", 
+                    "Impossible de se connecter à la base de données : " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
     
-    private void verifierTablesCommande(Connection conn) throws SQLException {
-        DatabaseMetaData metaData = conn.getMetaData();
+    /**
+     * Ajoute les produits d'une commande livrée au stock
+     * @param conn Connexion à la base de données
+     * @param commandeId ID de la commande livrée
+     * @throws SQLException En cas d'erreur SQL
+     */
+    private void ajouterProduitsEnStock(Connection conn, int commandeId) throws SQLException {
+        // Récupérer les détails de la commande
+        String queryDetails = "SELECT dc.produit_id, dc.quantite, c.pharmacie_id " +
+                             "FROM details_commandes dc " +
+                             "JOIN commandes c ON dc.commande_id = c.id " +
+                             "WHERE dc.commande_id = ?";
         
-        // Vérifier si la table commandes existe
-        ResultSet tables = metaData.getTables(null, null, "commandes", null);
-        if (!tables.next()) {
-            // Créer la table commandes
-            try (Statement stmt = conn.createStatement()) {
-                String createTableSQL = "CREATE TABLE commandes (" +
-                                      "id INT AUTO_INCREMENT PRIMARY KEY, " +
-                                      "fournisseur_id INT NOT NULL, " +
-                                      "date_commande DATE NOT NULL, " +
-                                      "date_livraison DATE NULL, " +
-                                      "statut VARCHAR(50) NOT NULL, " +
-                                      "notes TEXT NULL, " +
-                                      "montant_total DECIMAL(10, 2) NOT NULL, " +
-                                      "pharmacie_id INT NOT NULL, " +
-                                      "FOREIGN KEY (fournisseur_id) REFERENCES fournisseurs(id), " +
-                                      "FOREIGN KEY (pharmacie_id) REFERENCES pharmacies(id)" +
-                                      ")";
-                stmt.execute(createTableSQL);
-                System.out.println("Table 'commandes' créée avec succès.");
-            }
-        } else {
-            // Vérifier si la colonne notes existe
-            ResultSet notesColumn = metaData.getColumns(null, null, "commandes", "notes");
-            if (!notesColumn.next()) {
-                try (Statement stmt = conn.createStatement()) {
-                    stmt.execute("ALTER TABLE commandes ADD COLUMN notes TEXT NULL");
-                    System.out.println("Colonne 'notes' ajoutée à la table commandes.");
+        try (PreparedStatement pstmtDetails = conn.prepareStatement(queryDetails)) {
+            pstmtDetails.setInt(1, commandeId);
+            ResultSet rs = pstmtDetails.executeQuery();
+            
+            while (rs.next()) {
+                int produitId = rs.getInt("produit_id");
+                int quantite = rs.getInt("quantite");
+                int pharmacieId = rs.getInt("pharmacie_id");
+                
+                // Vérifier si le produit existe déjà en stock
+                String queryStock = "SELECT quantite FROM stocks WHERE produit_id = ? AND pharmacie_id = ?";
+                try (PreparedStatement pstmtStock = conn.prepareStatement(queryStock)) {
+                    pstmtStock.setInt(1, produitId);
+                    pstmtStock.setInt(2, pharmacieId);
+                    ResultSet rsStock = pstmtStock.executeQuery();
+                    
+                    if (rsStock.next()) {
+                        // Le produit existe déjà en stock, mettre à jour la quantité
+                        int quantiteActuelle = rsStock.getInt("quantite");
+                        String updateStock = "UPDATE stocks SET quantite = ?, date_derniere_maj = NOW() " +
+                                           "WHERE produit_id = ? AND pharmacie_id = ?";
+                        try (PreparedStatement pstmtUpdate = conn.prepareStatement(updateStock)) {
+                            pstmtUpdate.setInt(1, quantiteActuelle + quantite);
+                            pstmtUpdate.setInt(2, produitId);
+                            pstmtUpdate.setInt(3, pharmacieId);
+                            pstmtUpdate.executeUpdate();
+                        }
+                    } else {
+                        // Le produit n'existe pas en stock, l'ajouter
+                        String insertStock = "INSERT INTO stocks (produit_id, pharmacie_id, quantite, " +
+                                           "seuil_alerte, date_derniere_maj) VALUES (?, ?, ?, 10, NOW())";
+                        try (PreparedStatement pstmtInsert = conn.prepareStatement(insertStock)) {
+                            pstmtInsert.setInt(1, produitId);
+                            pstmtInsert.setInt(2, pharmacieId);
+                            pstmtInsert.setInt(3, quantite);
+                            pstmtInsert.executeUpdate();
+                        }
+                    }
                 }
             }
-            notesColumn.close();
         }
-        tables.close();
         
-        // Vérifier si la table details_commandes existe
-        tables = metaData.getTables(null, null, "details_commandes", null);
-        if (!tables.next()) {
-            // Créer la table details_commandes
-            try (Statement stmt = conn.createStatement()) {
-                String createTableSQL = "CREATE TABLE details_commandes (" +
-                                      "id INT AUTO_INCREMENT PRIMARY KEY, " +
-                                      "commande_id INT NOT NULL, " +
-                                      "produit_id INT NOT NULL, " +
-                                      "quantite INT NOT NULL, " +
-                                      "prix_unitaire DECIMAL(10, 2) NOT NULL, " +
-                                      "FOREIGN KEY (commande_id) REFERENCES commandes(id), " +
-                                      "FOREIGN KEY (produit_id) REFERENCES produits(id)" +
-                                      ")";
-                stmt.execute(createTableSQL);
-                System.out.println("Table 'details_commandes' créée avec succès.");
-            }
-        }
-        tables.close();
+        System.out.println("Produits de la commande " + commandeId + " ajoutés au stock avec succès.");
     }
     
     /**
@@ -596,7 +695,7 @@ public class CommandeService {
                        "JOIN fournisseurs f ON c.fournisseur_id = f.id " +
                        "WHERE c.pharmacie_id = ? AND c.statut = ? ORDER BY c.date_commande DESC";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, pharmacieId);
@@ -609,8 +708,8 @@ public class CommandeService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer les commandes par statut : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", 
+                    "Impossible de récupérer les commandes par statut : " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
         }
         
         return commandes;

@@ -722,138 +722,62 @@ public class AdminPanelController implements Initializable {
     @FXML
     protected void handleAddProduct() {
         try {
-            // Créer un dialogue pour saisir les informations du produit
-            Dialog<Produit> dialog = new Dialog<>();
-            dialog.setTitle("Ajouter un produit");
-            dialog.setHeaderText("Saisissez les informations du nouveau produit");
-            
-            // Boutons
-            ButtonType saveButtonType = new ButtonType("Enregistrer", ButtonBar.ButtonData.OK_DONE);
-            dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
-            
-            // Grille pour les champs
-            GridPane grid = new GridPane();
-            grid.setHgap(10);
-            grid.setVgap(10);
-            grid.setPadding(new Insets(20, 150, 10, 10));
-            
-            // Champs de saisie
-            TextField nomField = new TextField();
-            nomField.setPromptText("Nom du produit");
-            
-            TextField descriptionField = new TextField();
-            descriptionField.setPromptText("Description");
-            
-            TextField prixVenteField = new TextField();
-            prixVenteField.setPromptText("Prix de vente");
-            
-            TextField prixAchatField = new TextField();
-            prixAchatField.setPromptText("Prix d'achat");
-            
-            ComboBox<String> categorieComboBox = new ComboBox<>();
-            categorieComboBox.getItems().addAll(produitService.getAllCategories(pharmacieId));
-            categorieComboBox.setPromptText("Catégorie");
-            
-            DatePicker dateExpirationPicker = new DatePicker();
-            dateExpirationPicker.setPromptText("Date d'expiration");
-            
-            // Ajouter les champs à la grille
-            grid.add(new Label("Nom:"), 0, 0);
-            grid.add(nomField, 1, 0);
-            grid.add(new Label("Description:"), 0, 1);
-            grid.add(descriptionField, 1, 1);
-            grid.add(new Label("Prix de vente:"), 0, 2);
-            grid.add(prixVenteField, 1, 2);
-            grid.add(new Label("Prix d'achat:"), 0, 3);
-            grid.add(prixAchatField, 1, 3);
-            grid.add(new Label("Catégorie:"), 0, 4);
-            grid.add(categorieComboBox, 1, 4);
-            grid.add(new Label("Date d'expiration:"), 0, 5);
-            grid.add(dateExpirationPicker, 1, 5);
-            
-            dialog.getDialogPane().setContent(grid);
-            
-            // Focus sur le premier champ
-            Platform.runLater(() -> nomField.requestFocus());
-            
-            // Convertir le résultat
-            dialog.setResultConverter(dialogButton -> {
-                if (dialogButton == saveButtonType) {
-                    try {
-                        // Valider les champs obligatoires
-                        if (nomField.getText().isEmpty()) {
-                            throw new IllegalArgumentException("Le nom du produit est obligatoire");
+            // Créer et afficher le dialogue d'ajout de produit Swing
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                com.gestionpharma.AjoutProduitDialog dialog = new com.gestionpharma.AjoutProduitDialog(null);
+                dialog.setVisible(true);
+                
+                // Vérifier si l'utilisateur a confirmé l'ajout
+                if (dialog.estConfirme()) {
+                    Produit nouveauProduit = dialog.getProduit();
+                    if (nouveauProduit != null) {
+                        try {
+                            // Définir l'ID de la pharmacie
+                            nouveauProduit.setPharmacieId(pharmacieId);
+                            nouveauProduit.setDateCreation(LocalDate.now());
+                            
+                            // Ajouter le produit à la base de données
+                            boolean success = produitService.addProduit(nouveauProduit);
+                            
+                            if (success) {
+                                // Enregistrer l'activité
+                                String message = "Ajout du produit: " + nouveauProduit.getNom() + 
+                                        " (Catégorie: " + nouveauProduit.getCategorie() + 
+                                        ", Prix: " + nouveauProduit.getPrixVente() + "€)";
+                                activiteService.ajouterActivite("Produit", message, 
+                                        currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
+                                
+                                // Recharger les données
+                                Platform.runLater(() -> {
+                                    loadProductsData();
+                                    loadDashboardData();
+                                });
+                                
+                                javax.swing.JOptionPane.showMessageDialog(null, 
+                                        "Produit ajouté avec succès!", 
+                                        "Succès", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                            } else {
+                                javax.swing.JOptionPane.showMessageDialog(null, 
+                                        "Erreur lors de l'ajout du produit", 
+                                        "Erreur", javax.swing.JOptionPane.ERROR_MESSAGE);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            javax.swing.JOptionPane.showMessageDialog(null, 
+                                    "Erreur lors de l'ajout: " + e.getMessage(), 
+                                    "Erreur", javax.swing.JOptionPane.ERROR_MESSAGE);
                         }
-                        
-                        if (prixVenteField.getText().isEmpty() || prixAchatField.getText().isEmpty()) {
-                            throw new IllegalArgumentException("Les prix sont obligatoires");
-                        }
-                        
-                        if (categorieComboBox.getValue() == null) {
-                            throw new IllegalArgumentException("La catégorie est obligatoire");
-                        }
-                        
-                        // Créer un nouveau produit
-                        Produit produit = new Produit();
-                        produit.setNom(nomField.getText());
-                        produit.setDescription(descriptionField.getText());
-                        produit.setPrixVente(Double.parseDouble(prixVenteField.getText()));
-                        produit.setPrixAchat(Double.parseDouble(prixAchatField.getText()));
-                        produit.setCategorie(categorieComboBox.getValue());
-                        produit.setDateCreation(LocalDate.now());
-                        produit.setPharmacieId(pharmacieId);
-                        
-                        if (dateExpirationPicker.getValue() != null) {
-                            produit.setDateExpiration(dateExpirationPicker.getValue());
-                        }
-                        
-                        return produit;
-                    } catch (NumberFormatException e) {
-                        AlertUtils.showErrorAlert("Erreur", "Format invalide", 
-                                "Les prix doivent être des nombres valides");
-                        return null;
-                    } catch (IllegalArgumentException e) {
-                        AlertUtils.showErrorAlert("Erreur", "Champs obligatoires", e.getMessage());
-                        return null;
                     }
-                }
-                return null;
-            });
-            
-            // Afficher le dialogue et traiter le résultat
-            Optional<Produit> result = dialog.showAndWait();
-            
-            result.ifPresent(produit -> {
-                try {
-                    // Ajouter le produit à la base de données
-                    boolean success = produitService.addProduit(produit);
-                    
-                    if (success) {
-                        // Enregistrer l'activité
-                        activiteService.ajouterActivite("Produit", "Ajout du produit: " + produit.getNom(), 
-                                currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
-                        
-                        // Recharger les données
-                        loadProductsData();
-                        loadDashboardData();
-                        
-                        AlertUtils.showInfoAlert("Succès", "Produit ajouté", 
-                                "Le produit a été ajouté avec succès.");
-                    } else {
-                        AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du produit", 
-                                "Impossible d'ajouter le produit. Veuillez réessayer.");
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du produit", 
-                            "Impossible d'ajouter le produit: " + e.getMessage());
                 }
             });
             
+            // Enregistrer l'activité
+            activiteService.ajouterActivite("Produit", "Ajout d'un produit", 
+                    currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
         } catch (Exception e) {
             e.printStackTrace();
-            AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du produit", 
-                    "Impossible d'ajouter le produit: " + e.getMessage());
+            AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout de produit", 
+                    "Impossible d'ouvrir le dialogue d'ajout: " + e.getMessage());
         }
     }
     
@@ -1103,123 +1027,58 @@ public class AdminPanelController implements Initializable {
     @FXML
     protected void handleAddSupplier() {
         try {
-            // Créer un dialogue pour saisir les informations du fournisseur
-            Dialog<Fournisseur> dialog = new Dialog<>();
-            dialog.setTitle("Ajouter un fournisseur");
-            dialog.setHeaderText("Saisissez les informations du nouveau fournisseur");
-            
-            // Boutons
-            ButtonType saveButtonType = new ButtonType("Enregistrer", ButtonBar.ButtonData.OK_DONE);
-            dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
-            
-            // Grille pour les champs
-            GridPane grid = new GridPane();
-            grid.setHgap(10);
-            grid.setVgap(10);
-            grid.setPadding(new Insets(20, 150, 10, 10));
-            
-            // Champs de saisie
-            TextField nomField = new TextField();
-            nomField.setPromptText("Nom du fournisseur");
-            
-            TextField adresseField = new TextField();
-            adresseField.setPromptText("Adresse");
-            
-            TextField telephoneField = new TextField();
-            telephoneField.setPromptText("Téléphone");
-            
-            TextField emailField = new TextField();
-            emailField.setPromptText("Email");
-            
-            TextField siretField = new TextField();
-            siretField.setPromptText("SIRET");
-            
-            // Ajouter les champs à la grille
-            grid.add(new Label("Nom:"), 0, 0);
-            grid.add(nomField, 1, 0);
-            grid.add(new Label("Adresse:"), 0, 1);
-            grid.add(adresseField, 1, 1);
-            grid.add(new Label("Téléphone:"), 0, 2);
-            grid.add(telephoneField, 1, 2);
-            grid.add(new Label("Email:"), 0, 3);
-            grid.add(emailField, 1, 3);
-            grid.add(new Label("SIRET:"), 0, 4);
-            grid.add(siretField, 1, 4);
-            
-            dialog.getDialogPane().setContent(grid);
-            
-            // Focus sur le premier champ
-            Platform.runLater(() -> nomField.requestFocus());
-            
-            // Convertir le résultat
-            dialog.setResultConverter(dialogButton -> {
-                if (dialogButton == saveButtonType) {
-                    try {
-                        // Valider les champs obligatoires
-                        if (nomField.getText().isEmpty()) {
-                            throw new IllegalArgumentException("Le nom du fournisseur est obligatoire");
+            // Créer et afficher le dialogue d'ajout de fournisseur Swing
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                com.gestionpharma.AjoutFournisseurDialog dialog = new com.gestionpharma.AjoutFournisseurDialog(null);
+                dialog.setVisible(true);
+                
+                // Vérifier si l'utilisateur a confirmé l'ajout
+                if (dialog.estConfirme()) {
+                    Fournisseur nouveauFournisseur = dialog.getFournisseur();
+                    if (nouveauFournisseur != null) {
+                        try {
+                            // Définir l'ID de la pharmacie
+                            nouveauFournisseur.setPharmacieId(pharmacieId);
+                            
+                            // Ajouter le fournisseur à la base de données
+                            boolean success = fournisseurService.addFournisseur(nouveauFournisseur);
+                            
+                            if (success) {
+                                // Enregistrer l'activité
+                                String message = "Ajout du fournisseur: " + nouveauFournisseur.getNom() + 
+                                        " (Tel: " + nouveauFournisseur.getTelephone() + 
+                                        ", Email: " + nouveauFournisseur.getEmail() + ")";
+                                activiteService.ajouterActivite("Fournisseur", message, 
+                                        currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
+                                
+                                // Recharger les données
+                                Platform.runLater(() -> {
+                                    loadSuppliersData();
+                                    loadDashboardData();
+                                });
+                                
+                                javax.swing.JOptionPane.showMessageDialog(null, 
+                                        "Fournisseur ajouté avec succès!", 
+                                        "Succès", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                            } else {
+                                javax.swing.JOptionPane.showMessageDialog(null, 
+                                        "Erreur lors de l'ajout du fournisseur", 
+                                        "Erreur", javax.swing.JOptionPane.ERROR_MESSAGE);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            javax.swing.JOptionPane.showMessageDialog(null, 
+                                    "Erreur lors de l'ajout: " + e.getMessage(), 
+                                    "Erreur", javax.swing.JOptionPane.ERROR_MESSAGE);
                         }
-                        
-                        if (telephoneField.getText().isEmpty()) {
-                            throw new IllegalArgumentException("Le téléphone est obligatoire");
-                        }
-                        
-                        if (emailField.getText().isEmpty()) {
-                            throw new IllegalArgumentException("L'email est obligatoire");
-                        }
-                        
-                        // Créer un nouveau fournisseur
-                        Fournisseur fournisseur = new Fournisseur();
-                        fournisseur.setNom(nomField.getText());
-                        fournisseur.setAdresse(adresseField.getText());
-                        fournisseur.setTelephone(telephoneField.getText());
-                        fournisseur.setEmail(emailField.getText());
-                        fournisseur.setSiret(siretField.getText());
-                        fournisseur.setPharmacieId(pharmacieId);
-                        
-                        return fournisseur;
-                    } catch (IllegalArgumentException e) {
-                        AlertUtils.showErrorAlert("Erreur", "Champs obligatoires", e.getMessage());
-                        return null;
                     }
-                }
-                return null;
-            });
-            
-            // Afficher le dialogue et traiter le résultat
-            Optional<Fournisseur> result = dialog.showAndWait();
-            
-            result.ifPresent(fournisseur -> {
-                try {
-                    // Ajouter le fournisseur à la base de données
-                    boolean success = fournisseurService.addFournisseur(fournisseur);
-                    
-                    if (success) {
-                        // Enregistrer l'activité
-                        activiteService.ajouterActivite("Fournisseur", "Ajout du fournisseur: " + fournisseur.getNom(), 
-                                currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
-                        
-                        // Recharger les données
-                        loadSuppliersData();
-                        loadDashboardData();
-                        
-                        AlertUtils.showInfoAlert("Succès", "Fournisseur ajouté", 
-                                "Le fournisseur a été ajouté avec succès.");
-                    } else {
-                        AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du fournisseur", 
-                                "Impossible d'ajouter le fournisseur. Veuillez réessayer.");
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du fournisseur", 
-                            "Impossible d'ajouter le fournisseur: " + e.getMessage());
                 }
             });
             
         } catch (Exception e) {
             e.printStackTrace();
-            AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout du fournisseur", 
-                    "Impossible d'ajouter le fournisseur: " + e.getMessage());
+            AlertUtils.showErrorAlert("Erreur", "Erreur lors de l'ajout de fournisseur", 
+                    "Impossible d'ouvrir le dialogue d'ajout: " + e.getMessage());
         }
     }
     
@@ -1351,12 +1210,19 @@ public class AdminPanelController implements Initializable {
     @FXML
     protected void handleNewOrder() {
         try {
-            // TODO: Implémenter la création de commande
-            AlertUtils.showInfoAlert("Information", "Fonctionnalité en développement", 
-                    "La création de commandes sera disponible dans une future mise à jour.");
+            // Créer et afficher le dialogue de nouvelle commande
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                com.gestionpharma.NouvelleCommandeDialog dialog = new com.gestionpharma.NouvelleCommandeDialog(null);
+                dialog.setVisible(true);
+                
+                // Rafraîchir la liste des commandes si une commande a été créée
+                if (dialog.estConfirme()) {
+                    loadOrdersData();
+                }
+            });
             
             // Enregistrer l'activité
-            activiteService.ajouterActivite("Commande", "Tentative de création d'une nouvelle commande", 
+            activiteService.ajouterActivite("Commande", "Création d'une nouvelle commande", 
                     currentAdmin.getPrenom() + " " + currentAdmin.getNom(), pharmacieId);
         } catch (Exception e) {
             e.printStackTrace();

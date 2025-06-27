@@ -1,9 +1,9 @@
 package com.gestionpharma.services;
 
-import com.gestionpharma.config.DatabaseConfig;
+import com.gestionpharma.config.DatabaseConfigSimple;
 import com.gestionpharma.models.Stock;
-import com.gestionpharma.utils.AlertUtils;
 
+import javax.swing.JOptionPane;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,7 +26,7 @@ public class StockService {
     public List<Stock> getAllStocks(int pharmacieId) {
         List<Stock> stocks = new ArrayList<>();
         
-        try (Connection conn = DatabaseConfig.getConnection()) {
+        try (Connection conn = DatabaseConfigSimple.getConnection()) {
             // Vérifier si la table stocks existe
             DatabaseMetaData metaData = conn.getMetaData();
             ResultSet tables = metaData.getTables(null, null, "stocks", null);
@@ -106,7 +106,7 @@ public class StockService {
         String query = "INSERT INTO stocks (produit_id, pharmacie_id, quantite, seuil_minimum, " +
                        "statut, date_expiration, dernier_mouvement) VALUES (?, ?, ?, ?, ?, ?, ?)";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             
             pstmt.setInt(1, stock.getProduitId());
@@ -129,8 +129,7 @@ public class StockService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible d'ajouter le stock : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -147,7 +146,7 @@ public class StockService {
                        "statut = CASE WHEN ? <= seuil_minimum THEN 'Alerte' ELSE 'Normal' END " +
                        "WHERE id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, nouvelleQuantite);
@@ -159,8 +158,7 @@ public class StockService {
             return affectedRows > 0;
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de mettre à jour la quantité du stock : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -177,7 +175,7 @@ public class StockService {
                        "statut = CASE WHEN quantite <= ? THEN 'Alerte' ELSE 'Normal' END " +
                        "WHERE id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, nouveauSeuil);
@@ -188,8 +186,7 @@ public class StockService {
             return affectedRows > 0;
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de mettre à jour le seuil minimum : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -204,7 +201,7 @@ public class StockService {
     public boolean updateDateExpiration(int stockId, LocalDate nouvelleDate) {
         String query = "UPDATE stocks SET date_expiration = ? WHERE id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setDate(1, Date.valueOf(nouvelleDate));
@@ -214,8 +211,7 @@ public class StockService {
             return affectedRows > 0;
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de mettre à jour la date d'expiration : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return false;
@@ -231,7 +227,7 @@ public class StockService {
                        "JOIN produits p ON s.produit_id = p.id " +
                        "WHERE s.id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, stockId);
@@ -242,8 +238,7 @@ public class StockService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer le stock : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return null;
@@ -260,7 +255,7 @@ public class StockService {
                        "JOIN produits p ON s.produit_id = p.id " +
                        "WHERE s.produit_id = ? AND s.pharmacie_id = ?";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, produitId);
@@ -272,8 +267,7 @@ public class StockService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer le stock : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return null;
@@ -290,7 +284,7 @@ public class StockService {
                        "JOIN produits p ON s.produit_id = p.id " +
                        "WHERE s.pharmacie_id = ? AND s.quantite <= s.seuil_minimum";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, pharmacieId);
@@ -302,8 +296,7 @@ public class StockService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer les stocks en alerte : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return stocks;
@@ -322,7 +315,7 @@ public class StockService {
                        "WHERE s.pharmacie_id = ? AND s.date_expiration IS NOT NULL " +
                        "AND s.date_expiration <= DATE_ADD(CURDATE(), INTERVAL ? DAY)";
         
-        try (Connection conn = DatabaseConfig.getConnection();
+        try (Connection conn = DatabaseConfigSimple.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setInt(1, pharmacieId);
@@ -335,8 +328,7 @@ public class StockService {
             }
             
         } catch (SQLException e) {
-            AlertUtils.showErrorAlert("Erreur", "Erreur de base de données", 
-                    "Impossible de récupérer les stocks en expiration : " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Erreur de base de données", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         
         return stocks;
@@ -385,7 +377,7 @@ public class StockService {
             return false;
         }
 
-        try (Connection conn = DatabaseConfig.getConnection()) {
+        try (Connection conn = DatabaseConfigSimple.getConnection()) {
             conn.setAutoCommit(false); // Démarrer une transaction
 
             try {
@@ -485,8 +477,7 @@ public class StockService {
         if (stock != null) {
             // Vérifier que la quantité est suffisante
             if (stock.getQuantite() < quantite) {
-                AlertUtils.showWarningAlert("Attention", "Stock insuffisant", 
-                        "La quantité en stock est insuffisante pour effectuer cette sortie.");
+                JOptionPane.showMessageDialog(null, "La quantité en stock est insuffisante pour effectuer cette sortie.", "Attention", JOptionPane.WARNING_MESSAGE);
                 return false;
             }
             
@@ -494,8 +485,7 @@ public class StockService {
             int nouvelleQuantite = stock.getQuantite() - quantite;
             return updateQuantiteStock(stock.getId(), nouvelleQuantite);
         } else {
-            AlertUtils.showWarningAlert("Attention", "Stock inexistant", 
-                    "Aucun stock n'existe pour ce produit dans cette pharmacie.");
+            JOptionPane.showMessageDialog(null, "Aucun stock n'existe pour ce produit dans cette pharmacie.", "Attention", JOptionPane.WARNING_MESSAGE);
             return false;
         }
     }

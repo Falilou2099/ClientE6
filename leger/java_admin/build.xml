@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="BigPharmaAdmin" default="jar" basedir=".">
+    <description>
+        Fichier de build pour l'application d'administration BigPharma
+    </description>
+    
+    <!-- Définir les propriétés globales -->
+    <property name="src" location="src"/>
+    <property name="build" location="build"/>
+    <property name="dist" location="dist"/>
+    <property name="lib" location="lib"/>
+    <property name="resources" location="${src}/resources"/>
+    <property name="main-class" value="com.bigpharma.admin.Main"/>
+    
+    <!-- Initialiser le projet -->
+    <target name="init">
+        <mkdir dir="${build}"/>
+        <mkdir dir="${dist}"/>
+    </target>
+    
+    <!-- Compiler le code source -->
+    <target name="compile" depends="init" description="Compiler le code source">
+        <javac srcdir="${src}" destdir="${build}" includeantruntime="false">
+            <classpath>
+                <fileset dir="${lib}">
+                    <include name="**/*.jar"/>
+                </fileset>
+            </classpath>
+        </javac>
+        
+        <!-- Copier les ressources -->
+        <copy todir="${build}/resources">
+            <fileset dir="${resources}"/>
+        </copy>
+    </target>
+    
+    <!-- Créer le JAR exécutable -->
+    <target name="jar" depends="compile" description="Générer le JAR exécutable">
+        <jar destfile="${dist}/BigPharmaAdmin.jar" basedir="${build}">
+            <manifest>
+                <attribute name="Main-Class" value="${main-class}"/>
+                <attribute name="Class-Path" value="."/>
+            </manifest>
+            
+            <!-- Inclure les dépendances -->
+            <zipgroupfileset dir="${lib}" includes="**/*.jar"/>
+        </jar>
+    </target>
+    
+    <!-- Nettoyer le projet -->
+    <target name="clean" description="Nettoyer le projet">
+        <delete dir="${build}"/>
+        <delete dir="${dist}"/>
+    </target>
+    
+    <!-- Exécuter l'application -->
+    <target name="run" depends="jar" description="Exécuter l'application">
+        <java jar="${dist}/BigPharmaAdmin.jar" fork="true"/>
+    </target>
+</project>
